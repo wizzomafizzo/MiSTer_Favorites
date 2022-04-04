@@ -75,7 +75,12 @@ def create_favorites_folder():
 
 def remove_empty_favorites_folder():
     if os.path.exists(FAVORITES_FOLDER):
-        if len(os.listdir(FAVORITES_FOLDER)) == 0:
+        files = os.listdir(FAVORITES_FOLDER)
+        if len(files) == 0:
+            os.rmdir(FAVORITES_FOLDER)
+        elif len(files) == 1 and files[0] == "cores":
+            # clean up arcade cores symlink
+            os.remove(os.path.join(FAVORITES_FOLDER, "cores"))
             os.rmdir(FAVORITES_FOLDER)
 
 
@@ -143,19 +148,9 @@ def display_add_favorite_folder():
         "dialog", "--keep-window", "--title", WINDOW_TITLE, "--ok-label", "Select",
         "--menu", "Select a folder to place favorite.",
         WINDOW_DIMENSIONS[0], WINDOW_DIMENSIONS[1], WINDOW_DIMENSIONS[2],
-        "1", "<TOP LEVEL>"
+        "1", "<TOP LEVEL>",
+        "2", "_@Favorites/"
     ]
-
-    folders = []
-    for folder in os.listdir(SD_ROOT):
-        if folder.startswith("_"):
-            folders.append(folder)
-
-    number = 2
-    for folder in folders:
-        args.append(str(number))
-        args.append(str(folder.replace(SD_ROOT, "")))
-        number +=1
 
     result = subprocess.run(args, stderr=subprocess.PIPE)
 
@@ -166,7 +161,7 @@ def display_add_favorite_folder():
         if selection == 1:
             return "ROOT"
         else:
-            return folders[selection - 2]
+            return "_@Favorites"
     else:
         return None
 
@@ -212,7 +207,7 @@ def refresh_favorites():
         remove_favorite(idx)
 
         # ignore core files that aren't versioned
-        if re.match("_\d{8}\.", entry[1]) is None:
+        if re.search("_\d{8}\.", entry[1]) is None:
             continue
 
         link = entry[1].rsplit("_", 1)[0]
@@ -267,9 +262,6 @@ def display_launcher_select(start_folder):
             elif ext in ALLOWED_FILES:
                 files.append(i)
 
-        subfolders.sort()
-        files.sort()
-
         # add everything to the menu list
         for i in subfolders:
             args.extend([str(idx), "{}/".format(i)])
@@ -280,6 +272,9 @@ def display_launcher_select(start_folder):
             args.extend([str(idx), i])
             all_items.append(i)
             idx +=1
+
+        subfolders.sort()
+        files.sort()
 
         result = subprocess.run(args, stderr=subprocess.PIPE)
 
@@ -330,8 +325,22 @@ def add_favorite_workflow():
     add_favorite(entry[0], entry[1])
 
 
+# symlink arcade cores folder to make mra symlinks work
+def setup_arcade_files():
+    # TODO: validate these are correct symlinks before working on them
+    cores_folder = os.path.join(SD_ROOT, "_Arcade", "cores")
+    root_cores_link = os.path.join(SD_ROOT, "cores")
+    if not os.path.exists(root_cores_link):
+        os.symlink(cores_folder, root_cores_link)
+
+    favs_cores_link = os.path.join(FAVORITES_FOLDER, "cores")
+    if os.path.exists(FAVORITES_FOLDER) and not os.path.exists(favs_cores_link):
+        os.symlink(cores_folder, favs_cores_link)
+
+
 if __name__ == "__main__":
     create_favorites_folder()
+    setup_arcade_files()
     try_add_to_startup()
 
     if len(sys.argv) == 2 and sys.argv[1] == "refresh":
