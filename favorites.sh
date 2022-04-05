@@ -13,6 +13,10 @@ STARTUP_SCRIPT = "/media/fat/linux/user-startup.sh"
 
 ALLOWED_FILES = [".rbf", ".mra"]
 
+# by default hide all the unnecessary files in the SD root
+HIDE_SD_FILES = True
+ALLOWED_SD_FILES = ["_Arcade", "_Console", "_Computer", "_Other", "_Utility", "games"]
+
 WINDOW_TITLE = "Favorites Manager"
 WINDOW_DIMENSIONS = ["20", "75", "20"]
 
@@ -60,12 +64,18 @@ def add_favorite(core_path, favorite_path):
 
 
 def remove_favorite(index):
+    # TODO: remove based on contents instead of index?
     config = read_config()
     if len(config) == 0 or len(config) < index:
         return
     entry = config.pop(index)
     delete_link(entry)
     write_config(config)
+
+
+def make_mgl(rbf, delay, type, index, path):
+    mgl = "<mistergamedescription>\n\t<rbf>{}</rbf>\n\t<file delay=\"{}\" type=\"{}\" index=\"{}\" path=\"{}\"/>\n</mistergamedescription>"
+    return mgl.format(rbf, delay, type, index, path)
 
 
 def create_favorites_folder():
@@ -233,7 +243,6 @@ def try_add_to_startup():
 
 
 # display menu to browse for and select launcher file
-# TODO: ignore files that are favourites?
 def display_launcher_select(start_folder):
     def menu(folder):
         args = [
@@ -242,8 +251,8 @@ def display_launcher_select(start_folder):
             WINDOW_DIMENSIONS[0], WINDOW_DIMENSIONS[1], WINDOW_DIMENSIONS[2]
         ]
 
-        if os.path.dirname(folder) != folder:
-            # we aren't in root, allow going up a folder
+        if folder != os.path.dirname(SD_ROOT):
+            # restrict browsing to the /media folder
             args.extend(["1", ".."])
             all_items = [".."]
             idx = 2
@@ -256,11 +265,23 @@ def display_launcher_select(start_folder):
 
         # pick out and sort folders and valid files
         for i in os.listdir(folder):
+            # make an exception on sd root to show a clean version
+            if HIDE_SD_FILES and folder == SD_ROOT:
+                if i in ALLOWED_SD_FILES:
+                    subfolders.append(i)
+                    continue
+                else:
+                    continue
+
             name, ext = os.path.splitext(i)
+
             if os.path.isdir(os.path.join(folder, i)):
                 subfolders.append(i)
             elif ext in ALLOWED_FILES:
                 files.append(i)
+
+        subfolders.sort(key=str.lower)
+        files.sort(key=str.lower)
 
         # add everything to the menu list
         for i in subfolders:
@@ -273,8 +294,6 @@ def display_launcher_select(start_folder):
             all_items.append(i)
             idx +=1
 
-        subfolders.sort()
-        files.sort()
 
         result = subprocess.run(args, stderr=subprocess.PIPE)
 
