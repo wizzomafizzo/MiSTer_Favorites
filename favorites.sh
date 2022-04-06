@@ -18,6 +18,16 @@ ALLOWED_FILES = [".rbf", ".mra"]
 HIDE_SD_FILES = True
 ALLOWED_SD_FILES = ["_Arcade", "_Console", "_Computer", "_Other", "_Utility", "games"]
 
+MGL_MAP = {
+    "SNES": {
+        "files": {".sfc", ".smc"},
+        "rbf": "_Console/SNES",
+        "delay": 2,
+        "type": "f",
+        "index": 0
+    }
+}
+
 WINDOW_TITLE = "Favorites Manager"
 WINDOW_DIMENSIONS = ["20", "75", "20"]
 
@@ -63,6 +73,16 @@ def add_favorite(core_path, favorite_path):
     config = read_config()
     entry = [core_path, favorite_path]
     create_link(entry)
+    config.append(entry)
+    write_config(config)
+
+
+# TODO: combine with add_favorite?
+def add_favorite_mgl(core_path, mgl_path, mgl_data):
+    config = read_config()
+    entry = [core_path, mgl_path]
+    with open(mgl_path, "w") as f:
+        f.write(mgl_data)
     config.append(entry)
     write_config(config)
 
@@ -221,8 +241,15 @@ def refresh_favorites():
     config = read_config()
     broken = []
 
+    # TODO: don't like this line index stuff
     index = 0
     for entry in config:
+        # probably an mgl file
+        # TODO: check if it is?
+        if not os.path.islink(entry[1]):
+            index += 1
+            continue
+
         linked = os.readlink(entry[1])
         if not os.path.exists(linked):
             broken.append(index)
@@ -264,9 +291,54 @@ def try_add_to_startup():
 # display menu to browse for and select launcher file
 def display_launcher_select(start_folder):
     def menu(folder):
+        subfolders = []
+        files = []
+
+        file_type = "__CORE__"
+
+        # in a games directory, switch to rom files
+        for system in MGL_MAP:
+            if "/games/{}".format(system).lower() in folder.lower():
+                file_type = system
+
+        # pick out and sort folders and valid files
+        for i in os.listdir(folder):
+            # system roms
+            # TODO: combine with default section
+            if file_type != "__CORE__":
+                name, ext = os.path.splitext(i)
+                if os.path.isdir(os.path.join(folder, i)):
+                    subfolders.append(i)
+                elif ext in MGL_MAP[file_type]["files"]:
+                    files.append(i)
+                continue
+
+            # make an exception on sd root to show a clean version
+            if HIDE_SD_FILES and folder == SD_ROOT:
+                if i in ALLOWED_SD_FILES:
+                    subfolders.append(i)
+                    continue
+                else:
+                    continue
+
+            # default list/rbf and mra cores
+            name, ext = os.path.splitext(i)
+            if os.path.isdir(os.path.join(folder, i)):
+                subfolders.append(i)
+            elif ext in ALLOWED_FILES:
+                files.append(i)
+
+        subfolders.sort(key=str.lower)
+        files.sort(key=str.lower)
+
+        if file_type == "__CORE__":
+            msg = "Select core to favorite."
+        else:
+            msg = "Select {} rom to favorite.".format(file_type)
+
         args = [
             "dialog", "--title", WINDOW_TITLE, "--ok-label", "Select",
-            "--menu", "Select a core to favorite.\n" + folder,
+            "--menu", msg + "\n" + folder,
             WINDOW_DIMENSIONS[0], WINDOW_DIMENSIONS[1], WINDOW_DIMENSIONS[2]
         ]
 
@@ -278,29 +350,6 @@ def display_launcher_select(start_folder):
         else:
             all_items = []
             idx = 1
-
-        subfolders = []
-        files = []
-
-        # pick out and sort folders and valid files
-        for i in os.listdir(folder):
-            # make an exception on sd root to show a clean version
-            if HIDE_SD_FILES and folder == SD_ROOT:
-                if i in ALLOWED_SD_FILES:
-                    subfolders.append(i)
-                    continue
-                else:
-                    continue
-
-            name, ext = os.path.splitext(i)
-
-            if os.path.isdir(os.path.join(folder, i)):
-                subfolders.append(i)
-            elif ext in ALLOWED_FILES:
-                files.append(i)
-
-        subfolders.sort(key=str.lower)
-        files.sort(key=str.lower)
 
         # add everything to the menu list
         for i in subfolders:
@@ -321,14 +370,14 @@ def display_launcher_select(start_folder):
 
         if button == 0:
             if selection == "":
-                return None
+                return None, None
             else:
-                return all_items[selection - 1]
+                return file_type, all_items[selection - 1]
         else:
-            return None
+            return None, None
 
     current_folder = start_folder
-    selected = menu(current_folder)
+    file_type, selected = menu(current_folder)
     
     # handle browsing to another directory
     while selected is not None and (selected == ".." or selected.endswith("/")):
@@ -336,17 +385,17 @@ def display_launcher_select(start_folder):
             current_folder = os.path.join(current_folder, selected[:-1])
         elif selected == "..":
             current_folder = os.path.dirname(current_folder)
-        selected = menu(current_folder)
+        file_type, selected = menu(current_folder)
 
     if selected is None:
-        return None
+        return None, None
     else:
-        return os.path.join(current_folder, selected)
+        return file_type, os.path.join(current_folder, selected)
 
 
 def add_favorite_workflow():
-    item = display_launcher_select(SD_ROOT)
-    if item is None:
+    file_type, item = display_launcher_select(SD_ROOT)
+    if item is None or file_type is None:
         return
     
     name = display_add_favorite_name(item)
@@ -361,8 +410,19 @@ def add_favorite_workflow():
 
     # TODO: check favorite doesn't already exist
 
-    entry = [item, os.path.join(SD_ROOT, folder, name)]
-    add_favorite(entry[0], entry[1])
+    if file_type == "__CORE__":
+        # rbf/mra file
+        entry = (item, os.path.join(SD_ROOT, folder, name))
+        add_favorite(entry[0], entry[1])
+    else:
+        # system rom
+        # TODO: rom file path needs to be relative to the core's game folder
+        #       chop off the /media/<something>/games/<system> from the start
+        mgl_name = os.path.splitext(name)[0] + ".mgl"
+        entry = (item, os.path.join(SD_ROOT, folder, mgl_name))
+        mgl = MGL_MAP[file_type]
+        mgl_data = make_mgl(mgl["rbf"], mgl["delay"], mgl["type"], mgl["index"], item)
+        add_favorite_mgl(entry[0], entry[1], mgl_data)
 
 
 # symlink arcade cores folder to make mra symlinks work
