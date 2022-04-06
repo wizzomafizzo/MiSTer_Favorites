@@ -8,7 +8,8 @@ import re
 
 SD_ROOT = "/media/fat"
 FAVORITES_DB = os.path.join(SD_ROOT, "favorites.txt")
-FAVORITES_FOLDER = os.path.join(SD_ROOT, "_@Favorites")
+FAVORITES_NAME = "_@Favorites"
+FAVORITES_FOLDER = os.path.join(SD_ROOT, FAVORITES_NAME)
 STARTUP_SCRIPT = "/media/fat/linux/user-startup.sh"
 
 ALLOWED_FILES = [".rbf", ".mra"]
@@ -21,6 +22,7 @@ WINDOW_TITLE = "Favorites Manager"
 WINDOW_DIMENSIONS = ["20", "75", "20"]
 
 
+# read favorites file and return list of [target core -> link location]
 def read_config():
     if os.path.exists(FAVORITES_DB):
         favorites = []
@@ -34,6 +36,7 @@ def read_config():
         return []
 
 
+# write list of [target core -> link location] to favorites file
 def write_config(favorites):
     with open(FAVORITES_DB, "w") as f:
         for entry in favorites:
@@ -48,6 +51,7 @@ def delete_link(entry):
     os.remove(entry[1])
 
 
+# check if symlink goes to an existing file
 def link_valid(entry):
     if os.path.islink(entry[1]):
         path = os.readlink(entry[1])
@@ -63,6 +67,7 @@ def add_favorite(core_path, favorite_path):
     write_config(config)
 
 
+# remove favourite at on n line in favorites file
 def remove_favorite(index):
     # TODO: remove based on contents instead of index?
     config = read_config()
@@ -83,7 +88,9 @@ def create_favorites_folder():
         os.mkdir(FAVORITES_FOLDER)
 
 
-def remove_empty_favorites_folder():
+# delete any create folder and symlinks that aren't required anymore
+def cleanup_favorites():
+    # TODO: delete the root cores symlink if it's safe
     if os.path.exists(FAVORITES_FOLDER):
         files = os.listdir(FAVORITES_FOLDER)
         if len(files) == 0:
@@ -102,30 +109,39 @@ def get_menu_output(output):
 
 
 def display_main_menu():
-    args = [
-        "dialog", "--keep-window", "--title", WINDOW_TITLE, 
-        "--ok-label", "Select", "--cancel-label", "Exit",
-        "--menu", "Add a new favorite or select an existing one to delete it.",
-        WINDOW_DIMENSIONS[0], WINDOW_DIMENSIONS[1], WINDOW_DIMENSIONS[2],
-        "1", "<ADD A NEW FAVORITE>"
-    ]
-
     config = read_config()
 
-    number = 2
-    for entry in config:
-        args.append(str(number))
-        args.append(str(entry[1].replace(SD_ROOT, "")))
-        number += 1
+    def menu():
+        args = [
+            "dialog", "--title", WINDOW_TITLE, 
+            "--ok-label", "Select", "--cancel-label", "Exit",
+            "--menu", "Add a new favorite or select an existing one to delete.",
+            WINDOW_DIMENSIONS[0], WINDOW_DIMENSIONS[1], WINDOW_DIMENSIONS[2],
+            "1", "<ADD NEW FAVORITE>",
+            "",  "------------------"
+        ]
 
-    result = subprocess.run(args, stderr=subprocess.PIPE)
+        number = 2
+        for entry in config:
+            args.append(str(number))
+            args.append(str(entry[1].replace(SD_ROOT, "")))
+            number += 1
 
-    selection = get_menu_output(result.stderr.decode())
-    button = get_menu_output(result.returncode)
+        result = subprocess.run(args, stderr=subprocess.PIPE)
+
+        selection = get_menu_output(result.stderr.decode())
+        button = get_menu_output(result.returncode)
+
+        return selection, button
+
+    selection, button = menu()
+    # ignore separator menu items
+    while selection == None and button == 0:
+        selection, button = menu()
     
     if button == 0:
         if selection == 1:
-            return "ADD"
+            return "__ADD__"
         else:
             return config[selection - 2][1]
     else:
@@ -134,7 +150,7 @@ def display_main_menu():
 
 def display_add_favorite_name(item):
     args = [
-        "dialog", "--keep-window", "--title", WINDOW_TITLE, "--inputbox",
+        "dialog", "--title", WINDOW_TITLE, "--inputbox",
         "Enter a display name for the favorite. Dates and names.txt replacements will still apply.",
         WINDOW_DIMENSIONS[0], WINDOW_DIMENSIONS[1]
     ]
@@ -154,12 +170,13 @@ def display_add_favorite_name(item):
 
 
 def display_add_favorite_folder():
+    # TODO: show subfolders in favorites folder
     args = [
-        "dialog", "--keep-window", "--title", WINDOW_TITLE, "--ok-label", "Select",
+        "dialog", "--title", WINDOW_TITLE, "--ok-label", "Select",
         "--menu", "Select a folder to place favorite.",
         WINDOW_DIMENSIONS[0], WINDOW_DIMENSIONS[1], WINDOW_DIMENSIONS[2],
         "1", "<TOP LEVEL>",
-        "2", "_@Favorites/"
+        "2", "{}/".format(FAVORITES_NAME)
     ]
 
     result = subprocess.run(args, stderr=subprocess.PIPE)
@@ -169,7 +186,7 @@ def display_add_favorite_folder():
 
     if button == 0:
         if selection == 1:
-            return "ROOT"
+            return "__ROOT__"
         else:
             return "_@Favorites"
     else:
@@ -178,7 +195,7 @@ def display_add_favorite_folder():
 
 def display_delete_favorite(path):
     args = [
-        "dialog", "--keep-window", "--title", WINDOW_TITLE, "--yesno",
+        "dialog", "--title", WINDOW_TITLE, "--yesno",
         "Delete favorite {}?".format(path.replace(SD_ROOT, "")),
         WINDOW_DIMENSIONS[0], WINDOW_DIMENSIONS[1]
     ]
@@ -199,6 +216,7 @@ def display_delete_favorite(path):
         return None
 
 
+# go through all favorites, delete broken ones and attempt to fix updated cores
 def refresh_favorites():
     config = read_config()
     broken = []
@@ -212,7 +230,7 @@ def refresh_favorites():
 
     for idx in broken:
         entry = config[idx]
-        print("Refreshing broken favorite: {}".format(entry[1]))
+        print("Found broken favorite: {}".format(entry[1]))
 
         remove_favorite(idx)
 
@@ -230,6 +248,7 @@ def refresh_favorites():
             add_favorite(new_target, new_link)
 
 
+# run a refresh on each boot
 def try_add_to_startup():
     if not os.path.exists(STARTUP_SCRIPT):
         return
@@ -246,7 +265,7 @@ def try_add_to_startup():
 def display_launcher_select(start_folder):
     def menu(folder):
         args = [
-            "dialog", "--keep-window", "--title", WINDOW_TITLE, "--ok-label", "Select",
+            "dialog", "--title", WINDOW_TITLE, "--ok-label", "Select",
             "--menu", "Select a core to favorite.\n" + folder,
             WINDOW_DIMENSIONS[0], WINDOW_DIMENSIONS[1], WINDOW_DIMENSIONS[2]
         ]
@@ -337,8 +356,10 @@ def add_favorite_workflow():
     folder = display_add_favorite_folder()
     if folder is None:
         return
-    elif folder == "ROOT":
+    elif folder == "__ROOT__":
         folder = ""
+
+    # TODO: check favorite doesn't already exist
 
     entry = [item, os.path.join(SD_ROOT, folder, name)]
     add_favorite(entry[0], entry[1])
@@ -368,11 +389,11 @@ if __name__ == "__main__":
         refresh_favorites()
         selection = display_main_menu()
         while selection is not None:
-            if selection == "ADD":
+            if selection == "__ADD__":
                 add_favorite_workflow()
             else:
                 display_delete_favorite(selection)
             
             selection = display_main_menu()
 
-    remove_empty_favorites_folder()
+    cleanup_favorites()
