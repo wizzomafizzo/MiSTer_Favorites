@@ -6,31 +6,49 @@ import sys
 import glob
 import re
 
+FAVORITES_NAME = "_@Favorites"
+
 SD_ROOT = "/media/fat"
 FAVORITES_DB = os.path.join(SD_ROOT, "favorites.txt")
-FAVORITES_NAME = "_@Favorites"
 FAVORITES_FOLDER = os.path.join(SD_ROOT, FAVORITES_NAME)
 STARTUP_SCRIPT = "/media/fat/linux/user-startup.sh"
 
-ALLOWED_FILES = [".rbf", ".mra"]
-
 # by default hide all the unnecessary files in the SD root
 HIDE_SD_FILES = True
-ALLOWED_SD_FILES = ["_Arcade", "_Console", "_Computer", "_Other", "_Utility", "games"]
+ALLOWED_SD_FILES = {"_Arcade", "_Console", "_Computer", "_Other", "_Utility", "games"}
 
-MGL_MAP = {
-    "SNES": {
-        "files": {".sfc", ".smc"},
-        "rbf": "_Console/SNES",
-        "delay": 2,
-        "type": "f",
-        "index": 0
-    }
-}
+CORE_FILES = {".rbf", ".mra"}
+
+# (<games folder name>, <relative rbf location>, (<set of file extensions>, <delay>, <type>, <index>)[])
+MGL_MAP = (
+    # TODO: ATARI800
+    # TODO: ATARI2600
+    # TODO: ATARI5200
+    ("ATARI7800",   "_Console/Atari7800",       (({".a78", ".a26", ".bin"}, 1, "f", 1),)),
+    ("AtariLynx",   "_Console/AtariLynx",       (({".lnx"}, 1, "f", 0),)),
+    ("C64",         "_Computer/C64",            (({".prg", ".crt", ".reu", ".tap"}, 1, "f", 1),)),
+    ("Coleco",      "_Console/ColecoVision",    (({".col", ".bin", ".rom", ".sg"}, 1, "f", 0),)),
+    ("GAMEBOY",     "_Console/Gameboy",         (({".gb", ".gbc"}, 1, "f", 1),)),
+    ("GBA",         "_Console/GBA",             (({".gba"}, 1, "f", 0),)),
+    ("Genesis",     "_Console/Genesis",         (({".bin", ".gen", ".md"}, 1, "f", 0),)),
+    ("MegaCD",      "_Console/MegaCD",          (({".cue", ".chd"}, 1, "s", 0),)),
+    # TODO: if NeoGeo can take .zips directly, need specially handling for exploring .zips
+    ("NeoGeo",      "_Console/NeoGeo",          (({".neo", ".zip"}, 1, "f", 1), ({".iso", ".bin"}, 1, "s", 1))),
+    ("NES",         "_Console/NES",             (({".nes", ".fds", ".nsf"}, 1, "f", 0),)),
+    ("PSX",         "_Console/PSX",             (({".cue", ".chd"}, 1, "s", 1),)),
+    ("SMS",         "_Console/SMS",             (({".sms", ".sg"}, 1, "f", 1), ({".gg"}, 1, "f", 2))),
+    ("SNES",        "_Console/SNES",            (({".sfc", ".smc"}, 2, "f", 0),)),
+    # TODO: extra def for TGFX16-CD folder?
+    ("TGFX16",      "_Console/TurboGrafx16",    (({".pce", ".bin"}, 1, "f", 0), ({".sgx"}, 1, "f", 1), ({".cue", ".chd"}, 1, "s", 0))),
+    ("VECTREX",     "_Console/Vectrex",         (({".ovr", ".vec", ".bin", ".rom"}, 1, "f", 1),)),
+    ("WonderSwan",  "_Console/WonderSwan",      (({".wsc", ".ws"}, 1, "f", 1),)),
+)
 
 WINDOW_TITLE = "Favorites Manager"
 WINDOW_DIMENSIONS = ["20", "75", "20"]
 
+
+# TODO: browse contents of .zip files
 
 # read favorites file and return list of [target core -> link location]
 def read_config():
@@ -98,6 +116,7 @@ def remove_favorite(index):
     write_config(config)
 
 
+# generate XML contents for MGL file
 def make_mgl(rbf, delay, type, index, path):
     mgl = "<mistergamedescription>\n\t<rbf>{}</rbf>\n\t<file delay=\"{}\" type=\"{}\" index=\"{}\" path=\"{}\"/>\n</mistergamedescription>"
     return mgl.format(rbf, delay, type, index, path)
@@ -290,28 +309,35 @@ def try_add_to_startup():
 
 # display menu to browse for and select launcher file
 def display_launcher_select(start_folder):
+    # TODO: show system name next to mgl favorites
     def menu(folder):
         subfolders = []
         files = []
 
         file_type = "__CORE__"
+        mgl = None
 
         # in a games directory, switch to rom files
         for system in MGL_MAP:
-            if "/games/{}".format(system).lower() in folder.lower():
-                file_type = system
+            if "/games/{}".format(system[0]).lower() in folder.lower():
+                file_type = system[0]
+                mgl = system
 
         # pick out and sort folders and valid files
         for i in os.listdir(folder):
             # system roms
-            # TODO: combine with default section
-            if file_type != "__CORE__":
+            # TODO: combine with default section?
+            if file_type != "__CORE__" and mgl is not None:
                 name, ext = os.path.splitext(i)
+
                 if os.path.isdir(os.path.join(folder, i)):
                     subfolders.append(i)
-                elif ext in MGL_MAP[file_type]["files"]:
-                    files.append(i)
-                continue
+                    continue
+                else:
+                    for rom_type in mgl[2]:
+                        if ext in rom_type[0]:
+                            files.append(i)
+                            continue
 
             # make an exception on sd root to show a clean version
             if HIDE_SD_FILES and folder == SD_ROOT:
@@ -325,7 +351,7 @@ def display_launcher_select(start_folder):
             name, ext = os.path.splitext(i)
             if os.path.isdir(os.path.join(folder, i)):
                 subfolders.append(i)
-            elif ext in ALLOWED_FILES:
+            elif ext in CORE_FILES:
                 files.append(i)
 
         subfolders.sort(key=str.lower)
@@ -416,12 +442,29 @@ def add_favorite_workflow():
         add_favorite(entry[0], entry[1])
     else:
         # system rom
-        # TODO: rom file path needs to be relative to the core's game folder
-        #       chop off the /media/<something>/games/<system> from the start
-        mgl_name = os.path.splitext(name)[0] + ".mgl"
+        basename, ext = os.path.splitext(name)
+        mgl_name = basename + ".mgl"
         entry = (item, os.path.join(SD_ROOT, folder, mgl_name))
-        mgl = MGL_MAP[file_type]
-        mgl_data = make_mgl(mgl["rbf"], mgl["delay"], mgl["type"], mgl["index"], item)
+
+        rbf = None
+        mgl_def = None
+
+        # TODO: this may be unreliable
+        relative_path = os.path.join(*(item.split(os.path.sep)[5:]))
+
+        # look up up mgl definition from file
+        # TODO: this is a lot, move to a function? tidy up?
+        for system in MGL_MAP:
+            if system[0] == file_type:
+                rbf = system[1]
+                for rom_type in system[2]:
+                    if ext.lower() in rom_type[0]:
+                        mgl_def = rom_type
+        
+        if rbf is None or mgl_def is None:
+            raise Exception("Rom file type does not match any MGL definition")
+        
+        mgl_data = make_mgl(rbf, mgl_def[1], mgl_def[2], mgl_def[3], relative_path)
         add_favorite_mgl(entry[0], entry[1], mgl_data)
 
 
