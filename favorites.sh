@@ -13,35 +13,57 @@ FAVORITES_DB = os.path.join(SD_ROOT, "favorites.txt")
 FAVORITES_FOLDER = os.path.join(SD_ROOT, FAVORITES_NAME)
 STARTUP_SCRIPT = "/media/fat/linux/user-startup.sh"
 
-# by default hide all the unnecessary files in the SD root
+# by default hide all the unnecessary files in the SD root when browsing
 HIDE_SD_FILES = True
-ALLOWED_SD_FILES = {"_Arcade", "_Console", "_Computer", "_Other", "_Utility", "games"}
+ALLOWED_SD_FILES = {
+    "_Arcade",
+    "_Console",
+    "_Computer",
+    "_Other",
+    "_Utility",
+    "cifs",
+    "games",
+}
 
 CORE_FILES = {".rbf", ".mra"}
 
 # (<games folder name>, <relative rbf location>, (<set of file extensions>, <delay>, <type>, <index>)[])
 MGL_MAP = (
-    # TODO: ATARI800
     # TODO: ATARI2600
-    # TODO: ATARI5200
-    ("ATARI7800",   "_Console/Atari7800",       (({".a78", ".a26", ".bin"}, 1, "f", 1),)),
-    ("AtariLynx",   "_Console/AtariLynx",       (({".lnx"}, 1, "f", 0),)),
-    ("C64",         "_Computer/C64",            (({".prg", ".crt", ".reu", ".tap"}, 1, "f", 1),)),
-    ("Coleco",      "_Console/ColecoVision",    (({".col", ".bin", ".rom", ".sg"}, 1, "f", 0),)),
-    ("GAMEBOY",     "_Console/Gameboy",         (({".gb", ".gbc"}, 1, "f", 1),)),
-    ("GBA",         "_Console/GBA",             (({".gba"}, 1, "f", 0),)),
-    ("Genesis",     "_Console/Genesis",         (({".bin", ".gen", ".md"}, 1, "f", 0),)),
-    ("MegaCD",      "_Console/MegaCD",          (({".cue", ".chd"}, 1, "s", 0),)),
-    # TODO: if NeoGeo can take .zips directly, need specially handling for exploring .zips
-    ("NeoGeo",      "_Console/NeoGeo",          (({".neo", ".zip"}, 1, "f", 1), ({".iso", ".bin"}, 1, "s", 1))),
-    ("NES",         "_Console/NES",             (({".nes", ".fds", ".nsf"}, 1, "f", 0),)),
-    ("PSX",         "_Console/PSX",             (({".cue", ".chd"}, 1, "s", 1),)),
-    ("SMS",         "_Console/SMS",             (({".sms", ".sg"}, 1, "f", 1), ({".gg"}, 1, "f", 2))),
-    ("SNES",        "_Console/SNES",            (({".sfc", ".smc"}, 2, "f", 0),)),
+    ("ATARI7800", "_Console/Atari7800", (({".a78", ".a26", ".bin"}, 1, "f", 1),)),
+    ("AtariLynx", "_Console/AtariLynx", (({".lnx"}, 1, "f", 0),)),
+    ("C64", "_Computer/C64", (({".prg", ".crt", ".reu", ".tap"}, 1, "f", 1),)),
+    (
+        "Coleco",
+        "_Console/ColecoVision",
+        (({".col", ".bin", ".rom", ".sg"}, 1, "f", 0),),
+    ),
+    ("GAMEBOY", "_Console/Gameboy", (({".gb", ".gbc"}, 1, "f", 1),)),
+    ("GBA", "_Console/GBA", (({".gba"}, 1, "f", 0),)),
+    ("Genesis", "_Console/Genesis", (({".bin", ".gen", ".md"}, 1, "f", 0),)),
+    ("MegaCD", "_Console/MegaCD", (({".cue", ".chd"}, 1, "s", 0),)),
+    # TODO: if NeoGeo can take .zips directly, need special handling for exploring .zips
+    (
+        "NeoGeo",
+        "_Console/NeoGeo",
+        (({".neo", ".zip"}, 1, "f", 1), ({".iso", ".bin"}, 1, "s", 1)),
+    ),
+    ("NES", "_Console/NES", (({".nes", ".fds", ".nsf"}, 1, "f", 0),)),
+    ("PSX", "_Console/PSX", (({".cue", ".chd"}, 1, "s", 1),)),
+    ("SMS", "_Console/SMS", (({".sms", ".sg"}, 1, "f", 1), ({".gg"}, 1, "f", 2))),
+    ("SNES", "_Console/SNES", (({".sfc", ".smc"}, 2, "f", 0),)),
     # TODO: extra def for TGFX16-CD folder?
-    ("TGFX16",      "_Console/TurboGrafx16",    (({".pce", ".bin"}, 1, "f", 0), ({".sgx"}, 1, "f", 1), ({".cue", ".chd"}, 1, "s", 0))),
-    ("VECTREX",     "_Console/Vectrex",         (({".ovr", ".vec", ".bin", ".rom"}, 1, "f", 1),)),
-    ("WonderSwan",  "_Console/WonderSwan",      (({".wsc", ".ws"}, 1, "f", 1),)),
+    (
+        "TGFX16",
+        "_Console/TurboGrafx16",
+        (
+            ({".pce", ".bin"}, 1, "f", 0),
+            ({".sgx"}, 1, "f", 1),
+            ({".cue", ".chd"}, 1, "s", 0),
+        ),
+    ),
+    ("VECTREX", "_Console/Vectrex", (({".ovr", ".vec", ".bin", ".rom"}, 1, "f", 1),)),
+    ("WonderSwan", "_Console/WonderSwan", (({".wsc", ".ws"}, 1, "f", 1),)),
 )
 
 WINDOW_TITLE = "Favorites Manager"
@@ -118,7 +140,7 @@ def remove_favorite(index):
 
 # generate XML contents for MGL file
 def make_mgl(rbf, delay, type, index, path):
-    mgl = "<mistergamedescription>\n\t<rbf>{}</rbf>\n\t<file delay=\"{}\" type=\"{}\" index=\"{}\" path=\"{}\"/>\n</mistergamedescription>"
+    mgl = '<mistergamedescription>\n\t<rbf>{}</rbf>\n\t<file delay="{}" type="{}" index="{}" path="{}"/>\n</mistergamedescription>'
     return mgl.format(rbf, delay, type, index, path)
 
 
@@ -129,7 +151,7 @@ def create_favorites_folder():
 
 # delete any create folder and symlinks that aren't required anymore
 def cleanup_favorites():
-    # TODO: delete the root cores symlink if it's safe
+    # FIXME: delete the root cores symlink if it's safe
     if os.path.exists(FAVORITES_FOLDER):
         files = os.listdir(FAVORITES_FOLDER)
         if len(files) == 0:
@@ -150,14 +172,25 @@ def get_menu_output(output):
 def display_main_menu():
     config = read_config()
 
+    # TODO: show system name next to mgl favorites
     def menu():
         args = [
-            "dialog", "--title", WINDOW_TITLE, 
-            "--ok-label", "Select", "--cancel-label", "Exit",
-            "--menu", "Add a new favorite or select an existing one to delete.",
-            WINDOW_DIMENSIONS[0], WINDOW_DIMENSIONS[1], WINDOW_DIMENSIONS[2],
-            "1", "<ADD NEW FAVORITE>",
-            "",  "------------------"
+            "dialog",
+            "--title",
+            WINDOW_TITLE,
+            "--ok-label",
+            "Select",
+            "--cancel-label",
+            "Exit",
+            "--menu",
+            "Add a new favorite or select an existing one to delete.",
+            WINDOW_DIMENSIONS[0],
+            WINDOW_DIMENSIONS[1],
+            WINDOW_DIMENSIONS[2],
+            "1",
+            "<ADD NEW FAVORITE>",
+            "",
+            "------------------",
         ]
 
         number = 2
@@ -177,7 +210,7 @@ def display_main_menu():
     # ignore separator menu items
     while selection == None and button == 0:
         selection, button = menu()
-    
+
     if button == 0:
         if selection == 1:
             return "__ADD__"
@@ -189,9 +222,13 @@ def display_main_menu():
 
 def display_add_favorite_name(item):
     args = [
-        "dialog", "--title", WINDOW_TITLE, "--inputbox",
+        "dialog",
+        "--title",
+        WINDOW_TITLE,
+        "--inputbox",
         "Enter a display name for the favorite. Dates and names.txt replacements will still apply.",
-        WINDOW_DIMENSIONS[0], WINDOW_DIMENSIONS[1]
+        WINDOW_DIMENSIONS[0],
+        WINDOW_DIMENSIONS[1],
     ]
 
     orig_name, ext = os.path.splitext(os.path.basename(item))
@@ -211,11 +248,20 @@ def display_add_favorite_name(item):
 def display_add_favorite_folder():
     # TODO: show subfolders in favorites folder
     args = [
-        "dialog", "--title", WINDOW_TITLE, "--ok-label", "Select",
-        "--menu", "Select a folder to place favorite.",
-        WINDOW_DIMENSIONS[0], WINDOW_DIMENSIONS[1], WINDOW_DIMENSIONS[2],
-        "1", "<TOP LEVEL>",
-        "2", "{}/".format(FAVORITES_NAME)
+        "dialog",
+        "--title",
+        WINDOW_TITLE,
+        "--ok-label",
+        "Select",
+        "--menu",
+        "Select a folder to place favorite.",
+        WINDOW_DIMENSIONS[0],
+        WINDOW_DIMENSIONS[1],
+        WINDOW_DIMENSIONS[2],
+        "1",
+        "<TOP LEVEL>",
+        "2",
+        "{}/".format(FAVORITES_NAME),
     ]
 
     result = subprocess.run(args, stderr=subprocess.PIPE)
@@ -234,9 +280,13 @@ def display_add_favorite_folder():
 
 def display_delete_favorite(path):
     args = [
-        "dialog", "--title", WINDOW_TITLE, "--yesno",
+        "dialog",
+        "--title",
+        WINDOW_TITLE,
+        "--yesno",
         "Delete favorite {}?".format(path.replace(SD_ROOT, "")),
-        WINDOW_DIMENSIONS[0], WINDOW_DIMENSIONS[1]
+        WINDOW_DIMENSIONS[0],
+        WINDOW_DIMENSIONS[1],
     ]
 
     result = subprocess.run(args, stderr=subprocess.PIPE)
@@ -264,7 +314,7 @@ def refresh_favorites():
     index = 0
     for entry in config:
         # probably an mgl file
-        # TODO: check if it is?
+        # FIXME: check if it is?
         if not os.path.islink(entry[1]):
             index += 1
             continue
@@ -288,7 +338,7 @@ def refresh_favorites():
         old_target = entry[0].rsplit("_", 1)[0]
 
         new_search = glob.glob("{}_*".format(old_target))
-        if (len(new_search) > 0):
+        if len(new_search) > 0:
             new_target = new_search[0]
             new_link = "_".join([link, new_target.rsplit("_", 1)[1]])
             add_favorite(new_target, new_link)
@@ -304,12 +354,13 @@ def try_add_to_startup():
             return
 
     with open(STARTUP_SCRIPT, "a") as f:
-        f.write("\n# Startup favorites\n[[ -e /media/fat/Scripts/favorites.sh ]] && /media/fat/Scripts/favorites.sh refresh\n")
+        f.write(
+            "\n# Startup favorites\n[[ -e /media/fat/Scripts/favorites.sh ]] && /media/fat/Scripts/favorites.sh refresh\n"
+        )
 
 
 # display menu to browse for and select launcher file
 def display_launcher_select(start_folder):
-    # TODO: show system name next to mgl favorites
     def menu(folder):
         subfolders = []
         files = []
@@ -363,9 +414,16 @@ def display_launcher_select(start_folder):
             msg = "Select {} rom to favorite.".format(file_type)
 
         args = [
-            "dialog", "--title", WINDOW_TITLE, "--ok-label", "Select",
-            "--menu", msg + "\n" + folder,
-            WINDOW_DIMENSIONS[0], WINDOW_DIMENSIONS[1], WINDOW_DIMENSIONS[2]
+            "dialog",
+            "--title",
+            WINDOW_TITLE,
+            "--ok-label",
+            "Select",
+            "--menu",
+            msg + "\n" + folder,
+            WINDOW_DIMENSIONS[0],
+            WINDOW_DIMENSIONS[1],
+            WINDOW_DIMENSIONS[2],
         ]
 
         if folder != os.path.dirname(SD_ROOT):
@@ -386,8 +444,7 @@ def display_launcher_select(start_folder):
         for i in files:
             args.extend([str(idx), i])
             all_items.append(i)
-            idx +=1
-
+            idx += 1
 
         result = subprocess.run(args, stderr=subprocess.PIPE)
 
@@ -404,7 +461,7 @@ def display_launcher_select(start_folder):
 
     current_folder = start_folder
     file_type, selected = menu(current_folder)
-    
+
     # handle browsing to another directory
     while selected is not None and (selected == ".." or selected.endswith("/")):
         if selected.endswith("/"):
@@ -423,11 +480,11 @@ def add_favorite_workflow():
     file_type, item = display_launcher_select(SD_ROOT)
     if item is None or file_type is None:
         return
-    
+
     name = display_add_favorite_name(item)
     if name is None:
         return
-    
+
     folder = display_add_favorite_folder()
     if folder is None:
         return
@@ -449,28 +506,30 @@ def add_favorite_workflow():
         rbf = None
         mgl_def = None
 
+        # make path relative to system's games folder
         # TODO: this may be unreliable
         relative_path = os.path.join(*(item.split(os.path.sep)[5:]))
 
         # look up up mgl definition from file
-        # TODO: this is a lot, move to a function? tidy up?
+        # FIXME: this is a lot, move to a function? tidy up?
         for system in MGL_MAP:
             if system[0] == file_type:
                 rbf = system[1]
                 for rom_type in system[2]:
                     if ext.lower() in rom_type[0]:
                         mgl_def = rom_type
-        
+
         if rbf is None or mgl_def is None:
+            # this shouldn't really happen due to the contraints on the file picker
             raise Exception("Rom file type does not match any MGL definition")
-        
+
         mgl_data = make_mgl(rbf, mgl_def[1], mgl_def[2], mgl_def[3], relative_path)
         add_favorite_mgl(entry[0], entry[1], mgl_data)
 
 
 # symlink arcade cores folder to make mra symlinks work
 def setup_arcade_files():
-    # TODO: validate these are correct symlinks before working on them
+    # FIXME: validate these are correct symlinks before working on them
     cores_folder = os.path.join(SD_ROOT, "_Arcade", "cores")
     root_cores_link = os.path.join(SD_ROOT, "cores")
     if not os.path.exists(root_cores_link):
@@ -482,21 +541,23 @@ def setup_arcade_files():
 
 
 if __name__ == "__main__":
-    create_favorites_folder()
-    setup_arcade_files()
     try_add_to_startup()
 
     if len(sys.argv) == 2 and sys.argv[1] == "refresh":
         refresh_favorites()
     else:
+        create_favorites_folder()
+        setup_arcade_files()
+
         refresh_favorites()
+
         selection = display_main_menu()
         while selection is not None:
             if selection == "__ADD__":
                 add_favorite_workflow()
             else:
                 display_delete_favorite(selection)
-            
+
             selection = display_main_menu()
 
     cleanup_favorites()
