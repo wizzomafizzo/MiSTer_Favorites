@@ -67,7 +67,7 @@ MGL_MAP = (
 )
 
 WINDOW_TITLE = "Favorites Manager"
-WINDOW_DIMENSIONS = ["20", "75", "20"]
+WINDOW_DIMENSIONS = ["20", "75", "20"]  # TODO: customise and hardcode these
 
 
 # TODO: browse contents of .zip files
@@ -117,7 +117,6 @@ def add_favorite(core_path, favorite_path):
     write_config(config)
 
 
-# TODO: combine with add_favorite?
 def add_favorite_mgl(core_path, mgl_path, mgl_data):
     config = read_config()
     entry = [core_path, mgl_path]
@@ -130,6 +129,7 @@ def add_favorite_mgl(core_path, mgl_path, mgl_data):
 # remove favourite at on n line in favorites file
 def remove_favorite(index):
     # TODO: remove based on contents instead of index
+    # TODO: then sort main menu by name
     config = read_config()
     if len(config) == 0 or len(config) < index:
         return
@@ -151,13 +151,19 @@ def create_favorites_folder():
 
 # delete any create folder and symlinks that aren't required anymore
 def cleanup_favorites():
-    # FIXME: delete the root cores symlink if it's safe
+    root_cores = os.path.join(SD_ROOT, "cores")
+    if (
+        os.path.islink(root_cores)
+        and len(glob.glob("{}{}*.mra".format(SD_ROOT, os.path.sep))) == 0
+    ):
+        # delete the root cores symlink if it's safe
+        os.remove(root_cores)
     if os.path.exists(FAVORITES_FOLDER):
         files = os.listdir(FAVORITES_FOLDER)
         if len(files) == 0:
             os.rmdir(FAVORITES_FOLDER)
         elif len(files) == 1 and files[0] == "cores":
-            # clean up arcade cores symlink
+            # clean up favorites arcade cores symlink
             os.remove(os.path.join(FAVORITES_FOLDER, "cores"))
             os.rmdir(FAVORITES_FOLDER)
 
@@ -327,7 +333,6 @@ def refresh_favorites():
     index = 0
     for entry in config:
         # probably an mgl file
-        # FIXME: check if it is?
         if not os.path.islink(entry[1]):
             index += 1
             continue
@@ -391,7 +396,6 @@ def display_launcher_select(start_folder):
         # pick out and sort folders and valid files
         for i in os.listdir(folder):
             # system roms
-            # TODO: combine with default section?
             if file_type != "__CORE__" and mgl is not None:
                 name, ext = os.path.splitext(i)
 
@@ -502,6 +506,37 @@ def new_favorite_path(file_type, folder, name):
         return os.path.join(SD_ROOT, folder, mgl_name)
 
 
+# return required mgl values for file
+def mgl_from_file(file_type, name):
+    rbf = None
+    mgl_def = None
+    for system in MGL_MAP:
+        if system[0] == file_type:
+            rbf = system[1]
+            for rom_type in system[2]:
+                ext = os.path.splitext(name)[1]
+                if ext.lower() in rom_type[0]:
+                    mgl_def = rom_type
+    return rbf, mgl_def
+
+
+# return a relative rom path for mgl files
+def strip_games_folder(path):
+    items = os.path.normpath(path).split(os.path.sep)
+    idx = 0
+    rel_path = None
+    for name in items:
+        if name == "games" and (idx + 2) < len(items):
+            rel_path = os.path.join(*items[(idx + 2) :])
+            break
+        else:
+            idx += 1
+    if rel_path is None:
+        return path
+    else:
+        return rel_path
+
+
 def add_favorite_workflow():
     # pick the file to be favorited
     file_type, item = display_launcher_select(SD_ROOT)
@@ -527,7 +562,9 @@ def add_favorite_workflow():
         path = new_favorite_path(file_type, folder, name)
         if os.path.exists(path):
             valid_path = False
-            name = display_add_favorite_name(item, "A favorite already exists with this name.")
+            name = display_add_favorite_name(
+                item, "A favorite already exists with this name."
+            )
             continue
         if os.path.splitext(path)[1] == "":
             valid_path = False
@@ -535,40 +572,26 @@ def add_favorite_workflow():
             continue
         else:
             valid_path = True
-    
+
     if file_type == "__CORE__":
         # rbf/mra file
         add_favorite(item, path)
     else:
-        # system rom, mgl file
-        rbf = None
-        mgl_def = None
-
-        # make path relative to system's games folder
-        # FIXME: this won't work for cifs paths
-        relative_path = os.path.join(*(item.split(os.path.sep)[5:]))
-
-        # look up up mgl definition from file
-        # FIXME: this is a lot, move to a function? tidy up?
-        for system in MGL_MAP:
-            if system[0] == file_type:
-                rbf = system[1]
-                for rom_type in system[2]:
-                    ext = os.path.splitext(name)[1]
-                    if ext.lower() in rom_type[0]:
-                        mgl_def = rom_type
+        # system rom, make mgl file
+        rbf, mgl_def = mgl_from_file(file_type, name)
 
         if rbf is None or mgl_def is None:
             # this shouldn't really happen due to the contraints on the file picker
             raise Exception("Rom file type does not match any MGL definition")
 
-        mgl_data = make_mgl(rbf, mgl_def[1], mgl_def[2], mgl_def[3], relative_path)
+        mgl_data = make_mgl(
+            rbf, mgl_def[1], mgl_def[2], mgl_def[3], strip_games_folder(item)
+        )
         add_favorite_mgl(item, path, mgl_data)
 
 
 # symlink arcade cores folder to make mra symlinks work
 def setup_arcade_files():
-    # FIXME: validate these are correct symlinks before working on them
     cores_folder = os.path.join(SD_ROOT, "_Arcade", "cores")
     root_cores_link = os.path.join(SD_ROOT, "cores")
     if not os.path.exists(root_cores_link):
