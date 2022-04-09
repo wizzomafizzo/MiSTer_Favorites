@@ -5,6 +5,7 @@ import subprocess
 import sys
 import glob
 import re
+import zipfile
 
 FAVORITES_NAME = "_@Favorites"
 
@@ -73,8 +74,6 @@ MGL_MAP = (
 WINDOW_TITLE = "Favorites Manager"
 WINDOW_DIMENSIONS = ["20", "75", "20"]
 
-
-# TODO: browse contents of .zip files
 
 # read favorites file and return list of [target core -> link location]
 def read_config():
@@ -308,8 +307,12 @@ def display_add_favorite_folder():
     # include first level of subfolders
     idx = 3
     subfolders = []
-    for item in sorted(os.listdir(os.path.join(SD_ROOT, FAVORITES_NAME)), key=str.lower):
-        if os.path.isdir(os.path.join(SD_ROOT, FAVORITES_NAME, item)) and item.startswith("_"):
+    for item in sorted(
+        os.listdir(os.path.join(SD_ROOT, FAVORITES_NAME)), key=str.lower
+    ):
+        if os.path.isdir(
+            os.path.join(SD_ROOT, FAVORITES_NAME, item)
+        ) and item.startswith("_"):
             args.append(str(idx))
             args.append("{}/".format(item))
             subfolders.append(os.path.join(FAVORITES_NAME, item))
@@ -401,7 +404,7 @@ def try_add_to_startup():
 
 # display menu to browse for and select launcher file
 def display_launcher_select(start_folder):
-    def menu(folder):
+    def menu(folder: str):
         subfolders = []
         files = []
 
@@ -414,20 +417,30 @@ def display_launcher_select(start_folder):
                 file_type = system[0]
                 mgl = system
 
+        zip = None
+        if folder.lower().endswith(".zip"):
+            if not zipfile.is_zipfile(folder):
+                return file_type, os.path.dirname(folder)
+            zip = zipfile.ZipFile(folder)
+
+        if zip is not None:
+            dir = zip.namelist()
+        else:
+            dir = os.listdir(folder)
+
         # pick out and sort folders and valid files
-        for i in os.listdir(folder):
+        for i in dir:
             # system roms
             if file_type != "__CORE__" and mgl is not None:
                 name, ext = os.path.splitext(i)
-
                 if os.path.isdir(os.path.join(folder, i)):
                     subfolders.append(i)
                     continue
                 else:
                     for rom_type in mgl[2]:
-                        if ext in rom_type[0]:
+                        if ext in rom_type[0] or ext == ".zip":
                             files.append(i)
-                            continue
+                            break
 
             # make an exception on sd root to show a clean version
             if HIDE_SD_FILES and folder == SD_ROOT:
@@ -469,9 +482,13 @@ def display_launcher_select(start_folder):
         idx = 1
 
         # shortcut to external drive
-        show_external = folder == SD_ROOT and os.path.isdir(EXTERNAL_FOLDER) and len(os.listdir(EXTERNAL_FOLDER)) > 0
+        show_external = (
+            folder == SD_ROOT
+            and os.path.isdir(EXTERNAL_FOLDER)
+            and len(os.listdir(EXTERNAL_FOLDER)) > 0
+        )
         if show_external:
-            args.extend([str(idx), "<OPEN USB DRIVE>"])
+            args.extend([str(idx), "<GO TO USB DRIVE>"])
             idx += 1
 
         # restrict browsing to the /media folder
@@ -496,6 +513,9 @@ def display_launcher_select(start_folder):
         selection = get_menu_output(result.stderr.decode())
         button = get_menu_output(result.returncode)
 
+        if zip is not None:
+            zip.close()
+
         if button == 0:
             if selection == "":
                 return None, None
@@ -511,20 +531,26 @@ def display_launcher_select(start_folder):
     current_folder = start_folder
     file_type, selected = menu(current_folder)
 
-    # handle browsing to another directory
-    while selected is not None and (selected == ".." or selected.endswith("/")):
-        if selected == EXTERNAL_FOLDER + "/":
+    while True:
+        if selected is None:
+            return None, None
+        elif selected == EXTERNAL_FOLDER + "/":
             current_folder = EXTERNAL_FOLDER
         elif selected.endswith("/"):
             current_folder = os.path.join(current_folder, selected[:-1])
         elif selected == "..":
             current_folder = os.path.dirname(current_folder)
-        file_type, selected = menu(current_folder)
+        elif selected.lower().endswith(".zip"):
+            rbf, mgl_def = mgl_from_file(file_type, selected)
+            # exception for systems that actually accept zip files
+            if mgl_def is not None:
+                return file_type, os.path.join(current_folder, selected)
+            else:
+                current_folder = current_folder = os.path.join(current_folder, selected)
+        else:
+            return file_type, os.path.join(current_folder, selected)
 
-    if selected is None:
-        return None, None
-    else:
-        return file_type, os.path.join(current_folder, selected)
+        file_type, selected = menu(current_folder)
 
 
 # return full path of favorite file based on user selections
