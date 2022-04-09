@@ -127,14 +127,17 @@ def add_favorite_mgl(core_path, mgl_path, mgl_data):
 
 
 # remove favourite at on n line in favorites file
-def remove_favorite(index):
-    # TODO: remove based on contents instead of index
-    # TODO: then sort main menu by name
+def remove_favorite(path):
     config = read_config()
-    if len(config) == 0 or len(config) < index:
+    if len(config) == 0:
         return
-    entry = config.pop(index)
-    delete_link(entry)
+    idx = 0
+    for entry in config:
+        if entry[1] == path:
+            config.pop(idx)
+            delete_link(entry)
+            break
+        idx += 1
     write_config(config)
 
 
@@ -175,10 +178,18 @@ def get_menu_output(output):
         return None
 
 
-def display_main_menu():
-    config = read_config()
+# return system name from mgl file
+def get_mgl_system(path):
+    if os.path.exists(path):
+        with open(path, "r") as f:
+            core = re.search("\<rbf\>.+\/(.+)\</rbf\>", f.read())
+            if core:
+                return core.groups()[0]
 
-    # TODO: show system name next to mgl favorites
+
+def display_main_menu():
+    config = sorted(read_config(), key=lambda x: x[1].lower())
+
     def menu():
         args = [
             "dialog",
@@ -202,7 +213,15 @@ def display_main_menu():
         number = 2
         for entry in config:
             args.append(str(number))
-            args.append(str(entry[1].replace(SD_ROOT, "")))
+            fav_file = entry[1].replace(SD_ROOT, "")
+            if entry[1].endswith(".mgl"):
+                system_name = get_mgl_system(entry[1])
+                if system_name is not None:
+                    args.append("{} [{}]".format(fav_file, system_name))
+                else:
+                    args.append(str(fav_file))
+            else:
+                args.append(str(fav_file))
             number += 1
 
         result = subprocess.run(args, stderr=subprocess.PIPE)
@@ -313,12 +332,7 @@ def display_delete_favorite(path):
     button = get_menu_output(result.returncode)
 
     if button == 0:
-        config = read_config()
-        index = 0
-        for entry in config:
-            if path == entry[1]:
-                remove_favorite(index)
-            index += 1
+        remove_favorite(path)
         return
     else:
         return None
@@ -329,24 +343,17 @@ def refresh_favorites():
     config = read_config()
     broken = []
 
-    # TODO: don't like this line index stuff
-    index = 0
     for entry in config:
         # probably an mgl file
         if not os.path.islink(entry[1]):
-            index += 1
             continue
 
         linked = os.readlink(entry[1])
         if not os.path.exists(linked):
-            broken.append(index)
-        index += 1
+            broken.append(entry)
 
-    for idx in broken:
-        entry = config[idx]
-        print("Found broken favorite: {}".format(entry[1]))
-
-        remove_favorite(idx)
+    for entry in broken:
+        remove_favorite(entry[1])
 
         # ignore core files that aren't versioned
         if re.search("_\d{8}\.", entry[1]) is None:
