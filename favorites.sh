@@ -13,6 +13,10 @@ FAVORITES_DB = os.path.join(SD_ROOT, "favorites.txt")
 FAVORITES_FOLDER = os.path.join(SD_ROOT, FAVORITES_NAME)
 STARTUP_SCRIPT = "/media/fat/linux/user-startup.sh"
 
+EXTERNAL_FOLDER = "/media/usb0"
+if os.path.exists(os.path.join(EXTERNAL_FOLDER, "games")):
+    EXTERNAL_FOLDER = os.path.join(EXTERNAL_FOLDER, "games")
+
 # by default hide all the unnecessary files in the SD root when browsing
 HIDE_SD_FILES = True
 ALLOWED_SD_FILES = {
@@ -284,7 +288,6 @@ def display_add_favorite_name(item, msg=None):
 
 
 def display_add_favorite_folder():
-    # TODO: show subfolders in favorites folder
     args = [
         "dialog",
         "--title",
@@ -462,14 +465,20 @@ def display_launcher_select(start_folder):
             WINDOW_DIMENSIONS[2],
         ]
 
+        all_items = []
+        idx = 1
+
+        # shortcut to external drive
+        show_external = folder == SD_ROOT and os.path.isdir(EXTERNAL_FOLDER) and len(os.listdir(EXTERNAL_FOLDER)) > 0
+        if show_external:
+            args.extend([str(idx), "<OPEN USB DRIVE>"])
+            idx += 1
+
+        # restrict browsing to the /media folder
         if folder != os.path.dirname(SD_ROOT):
-            # restrict browsing to the /media folder
-            args.extend(["1", ".."])
+            args.extend([str(idx), ".."])
             all_items = [".."]
-            idx = 2
-        else:
-            all_items = []
-            idx = 1
+            idx += 1
 
         # add everything to the menu list
         for i in subfolders:
@@ -490,6 +499,10 @@ def display_launcher_select(start_folder):
         if button == 0:
             if selection == "":
                 return None, None
+            elif show_external and selection == 1:
+                return file_type, EXTERNAL_FOLDER + "/"
+            elif show_external:
+                return file_type, all_items[selection - 2]
             else:
                 return file_type, all_items[selection - 1]
         else:
@@ -500,7 +513,9 @@ def display_launcher_select(start_folder):
 
     # handle browsing to another directory
     while selected is not None and (selected == ".." or selected.endswith("/")):
-        if selected.endswith("/"):
+        if selected == EXTERNAL_FOLDER + "/":
+            current_folder = EXTERNAL_FOLDER
+        elif selected.endswith("/"):
             current_folder = os.path.join(current_folder, selected[:-1])
         elif selected == "..":
             current_folder = os.path.dirname(current_folder)
