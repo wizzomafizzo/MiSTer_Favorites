@@ -34,7 +34,7 @@ CORE_FILES = {".rbf", ".mra"}
 
 # (<games folder name>, <relative rbf location>, (<set of file extensions>, <delay>, <type>, <index>)[])
 MGL_MAP = (
-    # TODO: ATARI2600
+    ("ATARI2600", "_Console/Atari7800", (({".a78", ".a26", ".bin"}, 1, "f", 1),)),
     ("ATARI7800", "_Console/Atari7800", (({".a78", ".a26", ".bin"}, 1, "f", 1),)),
     ("AtariLynx", "_Console/AtariLynx", (({".lnx"}, 1, "f", 0),)),
     ("C64", "_Computer/C64", (({".prg", ".crt", ".reu", ".tap"}, 1, "f", 1),)),
@@ -44,10 +44,10 @@ MGL_MAP = (
         (({".col", ".bin", ".rom", ".sg"}, 1, "f", 0),),
     ),
     ("GAMEBOY", "_Console/Gameboy", (({".gb", ".gbc"}, 1, "f", 1),)),
+    # TODO: not sure this one is working
     ("GBA", "_Console/GBA", (({".gba"}, 1, "f", 0),)),
     ("Genesis", "_Console/Genesis", (({".bin", ".gen", ".md"}, 1, "f", 0),)),
     ("MegaCD", "_Console/MegaCD", (({".cue", ".chd"}, 1, "s", 0),)),
-    # TODO: if NeoGeo can take .zips directly, need special handling for exploring .zips
     (
         "NeoGeo",
         "_Console/NeoGeo",
@@ -57,15 +57,18 @@ MGL_MAP = (
     ("PSX", "_Console/PSX", (({".cue", ".chd"}, 1, "s", 1),)),
     ("SMS", "_Console/SMS", (({".sms", ".sg"}, 1, "f", 1), ({".gg"}, 1, "f", 2))),
     ("SNES", "_Console/SNES", (({".sfc", ".smc"}, 2, "f", 0),)),
-    # TODO: extra def for TGFX16-CD folder?
     (
         "TGFX16",
         "_Console/TurboGrafx16",
         (
             ({".pce", ".bin"}, 1, "f", 0),
             ({".sgx"}, 1, "f", 1),
-            ({".cue", ".chd"}, 1, "s", 0),
         ),
+    ),
+    (
+        "TGFX16-CD",
+        "_Console/TurboGrafx16",
+        (({".cue", ".chd"}, 1, "s", 0),),
     ),
     ("VECTREX", "_Console/Vectrex", (({".ovr", ".vec", ".bin", ".rom"}, 1, "f", 1),)),
     ("WonderSwan", "_Console/WonderSwan", (({".wsc", ".ws"}, 1, "f", 1),)),
