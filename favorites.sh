@@ -67,7 +67,7 @@ MGL_MAP = (
 )
 
 WINDOW_TITLE = "Favorites Manager"
-WINDOW_DIMENSIONS = ["20", "75", "20"]  # TODO: customise and hardcode these
+WINDOW_DIMENSIONS = ["20", "75", "20"]
 
 
 # TODO: browse contents of .zip files
@@ -302,6 +302,16 @@ def display_add_favorite_folder():
         "{}/".format(FAVORITES_NAME),
     ]
 
+    # include first level of subfolders
+    idx = 3
+    subfolders = []
+    for item in sorted(os.listdir(os.path.join(SD_ROOT, FAVORITES_NAME)), key=str.lower):
+        if os.path.isdir(os.path.join(SD_ROOT, FAVORITES_NAME, item)) and item.startswith("_"):
+            args.append(str(idx))
+            args.append("{}/".format(item))
+            subfolders.append(os.path.join(FAVORITES_NAME, item))
+            idx += 1
+
     result = subprocess.run(args, stderr=subprocess.PIPE)
 
     selection = get_menu_output(result.stderr.decode())
@@ -310,8 +320,10 @@ def display_add_favorite_folder():
     if button == 0:
         if selection == 1:
             return "__ROOT__"
+        elif selection == 2:
+            return FAVORITES_NAME
         else:
-            return "_@Favorites"
+            return subfolders[selection - 3]
     else:
         return None
 
@@ -370,7 +382,6 @@ def refresh_favorites():
 
 
 # run a refresh on each boot
-# TODO: remove from startup function
 def try_add_to_startup():
     if not os.path.exists(STARTUP_SCRIPT):
         return
@@ -434,7 +445,7 @@ def display_launcher_select(start_folder):
         files.sort(key=str.lower)
 
         if file_type == "__CORE__":
-            msg = "Select core to favorite."
+            msg = "Select core or game to favorite."
         else:
             msg = "Select {} rom to favorite.".format(file_type)
 
@@ -600,6 +611,7 @@ def add_favorite_workflow():
 # symlink arcade cores folder to make mra symlinks work
 def setup_arcade_files():
     cores_folder = os.path.join(SD_ROOT, "_Arcade", "cores")
+
     root_cores_link = os.path.join(SD_ROOT, "cores")
     if not os.path.exists(root_cores_link):
         os.symlink(cores_folder, root_cores_link)
@@ -612,7 +624,6 @@ def setup_arcade_files():
 if __name__ == "__main__":
     try_add_to_startup()
 
-    # TODO: uninstall function
     if len(sys.argv) == 2 and sys.argv[1] == "refresh":
         refresh_favorites()
     else:
