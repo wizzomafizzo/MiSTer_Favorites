@@ -3,7 +3,7 @@ MiSTer script to add and manage favorites in your menu. Supports system cores, a
 
 ## Installation
 
-Copy the [favorites.sh](https://github.com/wizzomafizzo/MiSTer_Favorites/raw/main/favorites.sh) file to your `/media/fat/Scripts` folder.
+Copy the [favorites.sh](https://github.com/wizzomafizzo/MiSTer_Favorites/raw/main/favorites.sh) file to your SD card's `Scripts` folder.
 
 Or SSH into your MiSTer and run: `wget -O /media/fat/Scripts/favorites.sh https://github.com/wizzomafizzo/MiSTer_Favorites/raw/main/favorites.sh`
 

@@ -21,11 +21,11 @@ if os.path.exists(os.path.join(EXTERNAL_FOLDER, "games")):
 # by default hide all the unnecessary files in the SD root when browsing
 HIDE_SD_FILES = True
 ALLOWED_SD_FILES = {
-    "_Arcade",
-    "_Console",
-    "_Computer",
-    "_Other",
-    "_Utility",
+    "_arcade",
+    "_console",
+    "_computer",
+    "_other",
+    "_utility",
     "cifs",
     "games",
 }
@@ -44,7 +44,6 @@ MGL_MAP = (
         (({".col", ".bin", ".rom", ".sg"}, 1, "f", 0),),
     ),
     ("GAMEBOY", "_Console/Gameboy", (({".gb", ".gbc"}, 1, "f", 1),)),
-    # TODO: not sure this one is working
     ("GBA", "_Console/GBA", (({".gba"}, 1, "f", 0),)),
     ("Genesis", "_Console/Genesis", (({".bin", ".gen", ".md"}, 1, "f", 0),)),
     ("MegaCD", "_Console/MegaCD", (({".cue", ".chd"}, 1, "s", 0),)),
@@ -447,7 +446,7 @@ def display_launcher_select(start_folder):
 
             # make an exception on sd root to show a clean version
             if HIDE_SD_FILES and folder == SD_ROOT:
-                if i in ALLOWED_SD_FILES:
+                if i.lower() in ALLOWED_SD_FILES:
                     subfolders.append(i)
                     continue
                 else:
@@ -583,12 +582,12 @@ def mgl_from_file(file_type, name):
 
 
 # return a relative rom path for mgl files
-def strip_games_folder(path):
+def strip_games_folder(path: str):
     items = os.path.normpath(path).split(os.path.sep)
     idx = 0
     rel_path = None
     for name in items:
-        if name == "games" and (idx + 2) < len(items):
+        if name.lower() == "games" and (idx + 2) < len(items):
             rel_path = os.path.join(*items[(idx + 2) :])
             break
         else:
@@ -647,7 +646,8 @@ def add_favorite_workflow():
             raise Exception("Rom file type does not match any MGL definition")
 
         mgl_data = make_mgl(
-            rbf, mgl_def[1], mgl_def[2], mgl_def[3], strip_games_folder(item)
+            # FIXME: different method for working out path
+            rbf, mgl_def[1], mgl_def[2], mgl_def[3], ("../../../.." + item)
         )
         add_favorite_mgl(item, path, mgl_data)
 
