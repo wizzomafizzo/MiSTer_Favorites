@@ -7,6 +7,15 @@ import glob
 import re
 import zipfile
 
+# TODO: add platform name to mgl name
+# TODO: add downloader file
+# TODO: update readme
+# TODO: filter only top level of zips
+# TODO: mgl file support
+# TODO: fix games folder not in games parent folder
+# TODO: try out a recent games folder
+# TODO: support for symlinking folders? for the games menu
+
 FAVORITES_NAME = "_@Favorites"
 
 SD_ROOT = "/media/fat"
@@ -54,6 +63,7 @@ MGL_MAP = (
     ),
     ("NES", "_Console/NES", (({".nes", ".fds", ".nsf"}, 1, "f", 0),)),
     ("PSX", "_Console/PSX", (({".cue", ".chd"}, 1, "s", 1),)),
+    ("S32X", "_Console/S32X", (({".32x"}, 1, "f", 0),)),
     ("SMS", "_Console/SMS", (({".sms", ".sg"}, 1, "f", 1), ({".gg"}, 1, "f", 2))),
     ("SNES", "_Console/SNES", (({".sfc", ".smc"}, 2, "f", 0),)),
     (
