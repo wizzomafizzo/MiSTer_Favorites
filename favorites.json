@@ -1,0 +1,19 @@
+{
+    "base_files_url": "",
+    "db_files": [],
+    "db_id": "favorites",
+    "db_url": "https://raw.githubusercontent.com/wizzomafizzo/MiSTer_Favorites/main/favorites.json",
+    "default_options": {},
+    "files": {
+        "Scripts/bgm.sh": {
+            "hash": "9b986cdeb361572fd47c5104fc64aca5",
+            "size": 20377,
+            "url": "https://raw.githubusercontent.com/wizzomafizzo/MiSTer_Favorites/main/favorites.sh"
+        }
+    },
+    "folders": {
+        "Scripts": {}
+    },
+    "timestamp": 1650943993,
+    "zips": {}
+}
