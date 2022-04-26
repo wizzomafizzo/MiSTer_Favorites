@@ -12,6 +12,7 @@ import zipfile
 # TODO: mgl file support
 # TODO: try out a recent games folder
 # TODO: support for symlinking folders? for the games menu
+# TODO: support deep nested subfolders in favs folder
 
 FAVORITES_NAME = "_@Favorites"
 
@@ -30,13 +31,14 @@ ALLOWED_SD_FILES = {
     "_arcade",
     "_console",
     "_computer",
+    "_games",
     "_other",
     "_utility",
     "cifs",
     "games",
 }
 
-CORE_FILES = {".rbf", ".mra"}
+CORE_FILES = {".rbf", ".mra", ".mgl"}
 
 # (<games folder name>, <relative rbf location>, (<set of file extensions>, <delay>, <type>, <index>)[])
 MGL_MAP = (
