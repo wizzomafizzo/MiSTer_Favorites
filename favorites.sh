@@ -7,9 +7,7 @@ import glob
 import re
 import zipfile
 
-# TODO: add platform name to mgl name
-# TODO: filter only top level of zips
-# TODO: mgl file support
+# TODO: add platform name to mgl name?
 # TODO: try out a recent games folder
 # TODO: support for symlinking folders? for the games menu
 # TODO: support deep nested subfolders in favs folder
@@ -449,7 +447,7 @@ def display_launcher_select(start_folder):
             zip = zipfile.ZipFile(folder)
 
         if zip is not None:
-            dir = zip.namelist()
+            dir = [x for x in zip.namelist() if "/" not in x]
         else:
             dir = os.listdir(folder)
 
