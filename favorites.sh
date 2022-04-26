@@ -8,11 +8,8 @@ import re
 import zipfile
 
 # TODO: add platform name to mgl name
-# TODO: add downloader file
-# TODO: update readme
 # TODO: filter only top level of zips
 # TODO: mgl file support
-# TODO: fix games folder not in games parent folder
 # TODO: try out a recent games folder
 # TODO: support for symlinking folders? for the games menu
 
@@ -81,6 +78,17 @@ MGL_MAP = (
     ),
     ("VECTREX", "_Console/Vectrex", (({".ovr", ".vec", ".bin", ".rom"}, 1, "f", 1),)),
     ("WonderSwan", "_Console/WonderSwan", (({".wsc", ".ws"}, 1, "f", 1),)),
+)
+
+GAMES_FOLDERS = (
+    "/media/fat",
+    "/media/usb0",
+    "/media/usb1",
+    "/media/usb2",
+    "/media/usb3",
+    "/media/usb4",
+    "/media/usb5",
+    "/media/fat/cifs",
 )
 
 WINDOW_TITLE = "Favorites Manager"
@@ -414,20 +422,23 @@ def try_add_to_startup():
         )
 
 
+def match_games_folder(folder: str):
+    for system in MGL_MAP:
+        for parent in GAMES_FOLDERS:
+            base_folder = os.path.join(parent, system[0]).lower()
+            games_subfolder = os.path.join(parent, "games", system[0]).lower()
+            folder = folder.lower()
+            if folder.startswith(base_folder) or folder.startswith(games_subfolder):
+                return system[0], system
+    return "__CORE__", None
+
+
 # display menu to browse for and select launcher file
 def display_launcher_select(start_folder):
     def menu(folder: str):
         subfolders = []
         files = []
-
-        file_type = "__CORE__"
-        mgl = None
-
-        # in a games directory, switch to rom files
-        for system in MGL_MAP:
-            if "/games/{}".format(system[0]).lower() in folder.lower():
-                file_type = system[0]
-                mgl = system
+        file_type, mgl = match_games_folder(folder)
 
         zip = None
         if folder.lower().endswith(".zip"):
@@ -657,7 +668,11 @@ def add_favorite_workflow():
 
         mgl_data = make_mgl(
             # FIXME: different method for working out path
-            rbf, mgl_def[1], mgl_def[2], mgl_def[3], ("../../../.." + item)
+            rbf,
+            mgl_def[1],
+            mgl_def[2],
+            mgl_def[3],
+            ("../../../.." + item),
         )
         add_favorite_mgl(item, path, mgl_data)
 
