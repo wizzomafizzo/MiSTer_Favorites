@@ -5,7 +5,7 @@
     "db_url": "https://raw.githubusercontent.com/wizzomafizzo/MiSTer_Favorites/main/favorites.json",
     "default_options": {},
     "files": {
-        "Scripts/bgm.sh": {
+        "Scripts/favorites.sh": {
             "hash": "3a2f5da44521c2aac7578eee28a8de21",
             "size": 20759,
             "url": "https://raw.githubusercontent.com/wizzomafizzo/MiSTer_Favorites/main/favorites.sh"
