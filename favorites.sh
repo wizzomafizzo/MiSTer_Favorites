@@ -7,8 +7,6 @@ import glob
 import re
 import zipfile
 
-# TODO: support for symlinking folders? for the games menu
-# TODO: support deep nested subfolders in favs folder
 # TODO: allow renaming of existing items
 # TODO: mention other scripts in readme
 # TODO: shorten long filenames in menu items
@@ -347,16 +345,18 @@ def display_add_favorite_folder():
     # include first level of subfolders
     idx = 3
     subfolders = []
-    for item in sorted(
-        os.listdir(os.path.join(SD_ROOT, FAVORITES_NAME)), key=str.lower
-    ):
-        if os.path.isdir(
-            os.path.join(SD_ROOT, FAVORITES_NAME, item)
-        ) and item.startswith("_"):
-            args.append(str(idx))
-            args.append("{}/".format(item))
-            subfolders.append(os.path.join(FAVORITES_NAME, item))
-            idx += 1
+
+    for root, dirs, files in os.walk(os.path.join(SD_ROOT, FAVORITES_NAME)):
+        for item in dirs:
+            path = os.path.join(root, item)
+            if os.path.isdir(path) and item.startswith("_"):
+                subfolders.append(path.replace(SD_ROOT + os.path.sep, ""))
+
+
+    for item in sorted(subfolders, key=str.lower):
+        args.append(str(idx))
+        args.append("{}/".format(item))
+        idx += 1
 
     result = subprocess.run(args, stderr=subprocess.PIPE)
 
