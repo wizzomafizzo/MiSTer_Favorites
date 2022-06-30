@@ -247,7 +247,7 @@ def display_main_menu():
             "--default-item",
             get_selection("__MAIN__"),
             "--menu",
-            "Add a new favorite or select an existing one to delete.",
+            "Add a new favorite or select an existing one to modify.",
             WINDOW_DIMENSIONS[0],
             WINDOW_DIMENSIONS[1],
             WINDOW_DIMENSIONS[2],
@@ -774,6 +774,12 @@ def setup_arcade_files():
     favs_cores_link = os.path.join(FAVORITES_FOLDER, "cores")
     if os.path.exists(FAVORITES_FOLDER) and not os.path.exists(favs_cores_link):
         os.symlink(cores_folder, favs_cores_link)
+
+    for root, dirs, files in os.walk(os.path.join(SD_ROOT, FAVORITES_NAME)):
+        for d in dirs:
+            cores_link = os.path.join(root, d, "cores")
+            if not os.path.exists(cores_link):
+                os.symlink(cores_folder, cores_link)
 
 
 if __name__ == "__main__":
