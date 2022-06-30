@@ -7,9 +7,6 @@ import glob
 import re
 import zipfile
 
-# TODO: mention other scripts in readme
-# TODO: shorten long filenames in menu items
-
 FAVORITES_NAME = "_@Favorites"
 
 SD_ROOT = "/media/fat"
