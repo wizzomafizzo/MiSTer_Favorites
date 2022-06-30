@@ -7,10 +7,11 @@ import glob
 import re
 import zipfile
 
-# TODO: add platform name to mgl name?
-# TODO: try out a recent games folder
 # TODO: support for symlinking folders? for the games menu
 # TODO: support deep nested subfolders in favs folder
+# TODO: allow renaming of existing items
+# TODO: mention other scripts in readme
+# TODO: shorten long filenames in menu items
 
 FAVORITES_NAME = "_@Favorites"
 
@@ -93,6 +94,22 @@ GAMES_FOLDERS = (
 
 WINDOW_TITLE = "Favorites Manager"
 WINDOW_DIMENSIONS = ["20", "75", "20"]
+
+SELECTION_HISTORY = {
+    "__MAIN__": "1",
+}
+
+
+def get_selection(path):
+    if path in SELECTION_HISTORY:
+        return str(SELECTION_HISTORY[path])
+    else:
+        return ""
+
+
+def set_selection(path, selection):
+    global SELECTION_HISTORY
+    SELECTION_HISTORY[path] = str(selection)
 
 
 # read favorites file and return list of [target core -> link location]
@@ -222,6 +239,8 @@ def display_main_menu():
             "Select",
             "--cancel-label",
             "Exit",
+            "--default-item",
+            get_selection("__MAIN__"),
             "--menu",
             "Add a new favorite or select an existing one to delete.",
             WINDOW_DIMENSIONS[0],
@@ -251,6 +270,7 @@ def display_main_menu():
 
         selection = get_menu_output(result.stderr.decode())
         button = get_menu_output(result.returncode)
+        set_selection("__MAIN__", selection)
 
         return selection, button
 
@@ -494,6 +514,8 @@ def display_launcher_select(start_folder):
             WINDOW_TITLE,
             "--ok-label",
             "Select",
+            "--default-item",
+            get_selection(folder),
             "--menu",
             msg + "\n" + folder,
             WINDOW_DIMENSIONS[0],
@@ -542,7 +564,9 @@ def display_launcher_select(start_folder):
         if button == 0:
             if selection == "":
                 return None, None
-            elif show_external and selection == 1:
+            set_selection(folder, selection)
+
+            if show_external and selection == 1:
                 return file_type, EXTERNAL_FOLDER + "/"
             elif show_external:
                 return file_type, all_items[selection - 2]
@@ -667,7 +691,6 @@ def add_favorite_workflow():
             raise Exception("Rom file type does not match any MGL definition")
 
         mgl_data = make_mgl(
-            # FIXME: different method for working out path
             rbf,
             mgl_def[1],
             mgl_def[2],
@@ -709,5 +732,6 @@ if __name__ == "__main__":
                 display_delete_favorite(selection)
 
             selection = display_main_menu()
+        print("")
 
     cleanup_favorites()
