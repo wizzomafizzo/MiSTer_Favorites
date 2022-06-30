@@ -44,7 +44,9 @@ MGL_MAP = (
         "_Console/ColecoVision",
         (({".col", ".bin", ".rom", ".sg"}, 1, "f", 0),),
     ),
+    ("GAMEBOY2P", "_Console/Gameboy2P", (({".gb", ".gbc"}, 1, "f", 1),)),
     ("GAMEBOY", "_Console/Gameboy", (({".gb", ".gbc"}, 1, "f", 1),)),
+    ("GBA2P", "_Console/GBA2P", (({".gba"}, 1, "f", 0),)),
     ("GBA", "_Console/GBA", (({".gba"}, 1, "f", 0),)),
     ("Genesis", "_Console/Genesis", (({".bin", ".gen", ".md"}, 1, "f", 0),)),
     ("MegaCD", "_Console/MegaCD", (({".cue", ".chd"}, 1, "s", 0),)),
@@ -58,6 +60,11 @@ MGL_MAP = (
     ("S32X", "_Console/S32X", (({".32x"}, 1, "f", 0),)),
     ("SMS", "_Console/SMS", (({".sms", ".sg"}, 1, "f", 1), ({".gg"}, 1, "f", 2))),
     ("SNES", "_Console/SNES", (({".sfc", ".smc"}, 2, "f", 0),)),
+        (
+        "TGFX16-CD",
+        "_Console/TurboGrafx16",
+        (({".cue", ".chd"}, 1, "s", 0),),
+    ),
     (
         "TGFX16",
         "_Console/TurboGrafx16",
@@ -65,11 +72,6 @@ MGL_MAP = (
             ({".pce", ".bin"}, 1, "f", 0),
             ({".sgx"}, 1, "f", 1),
         ),
-    ),
-    (
-        "TGFX16-CD",
-        "_Console/TurboGrafx16",
-        (({".cue", ".chd"}, 1, "s", 0),),
     ),
     ("VECTREX", "_Console/Vectrex", (({".ovr", ".vec", ".bin", ".rom"}, 1, "f", 1),)),
     ("WonderSwan", "_Console/WonderSwan", (({".wsc", ".ws"}, 1, "f", 1),)),
