@@ -7,7 +7,6 @@ import glob
 import re
 import zipfile
 
-# TODO: allow renaming of existing items
 # TODO: mention other scripts in readme
 # TODO: shorten long filenames in menu items
 
@@ -164,7 +163,6 @@ def add_favorite_mgl(core_path, mgl_path, mgl_data):
     write_config(config)
 
 
-# remove favourite at on n line in favorites file
 def remove_favorite(path):
     config = read_config()
     if len(config) == 0:
@@ -178,6 +176,15 @@ def remove_favorite(path):
         idx += 1
     write_config(config)
 
+
+def rename_favorite(path, new_path):
+    os.rename(path, new_path)
+    config = read_config()
+    for entry in config:
+        if entry[1] == path:
+            entry[1] = new_path
+            break
+    write_config(config)
 
 # generate XML contents for MGL file
 def make_mgl(rbf, delay, type, index, path):
@@ -342,7 +349,6 @@ def display_add_favorite_folder():
         "{}/".format(FAVORITES_NAME),
     ]
 
-    # include first level of subfolders
     idx = 3
     subfolders = []
 
@@ -372,6 +378,63 @@ def display_add_favorite_folder():
             return subfolders[selection - 3]
     else:
         return None
+
+
+def display_modify_favorite(path, msg=None):
+    # display a message box first if there's a problem
+    if msg is not None:
+        msg_args = [
+            "dialog",
+            "--title",
+            WINDOW_TITLE,
+            "--msgbox",
+            msg,
+            WINDOW_DIMENSIONS[0],
+            WINDOW_DIMENSIONS[1],
+        ]
+        subprocess.run(msg_args)
+
+    args = [
+        "dialog",
+        "--title",
+        WINDOW_TITLE,
+        "--ok-label",
+        "Rename",
+        "--extra-button",
+        "--extra-label",
+        "Delete",
+        "--inputbox",
+        "Enter a new display name for the favorite or delete it.",
+        WINDOW_DIMENSIONS[0],
+        WINDOW_DIMENSIONS[1],
+    ]
+
+    orig_name, ext = os.path.splitext(os.path.basename(path))
+    args.append(orig_name)
+
+    result = subprocess.run(args, stderr=subprocess.PIPE)
+
+    name = str(result.stderr.decode())
+    button = get_menu_output(result.returncode)
+
+    if button == 3:
+        # delete
+        display_delete_favorite(path)
+        return
+    elif button == 0:
+        # rename
+        new_path = os.path.join(os.path.dirname(path), name + ext)
+        
+        if name == "":
+            return display_modify_favorite(path, "Name cannot be empty.")
+        elif os.path.exists(new_path):
+            return display_modify_favorite(path, "Favorite with this name already exists.")
+
+        rename_favorite(path, new_path)
+        return
+    else:
+        # cancel
+        return
 
 
 def display_delete_favorite(path):
@@ -729,7 +792,7 @@ if __name__ == "__main__":
             if selection == "__ADD__":
                 add_favorite_workflow()
             else:
-                display_delete_favorite(selection)
+                display_modify_favorite(selection)
 
             selection = display_main_menu()
         print("")
