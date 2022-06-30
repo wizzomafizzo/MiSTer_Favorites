@@ -263,12 +263,19 @@ def display_main_menu():
             fav_file = entry[1].replace(SD_ROOT, "")
             if entry[1].endswith(".mgl"):
                 system_name = get_mgl_system(entry[1])
+                display = ""
+
                 if system_name is not None:
-                    args.append("{} [{}]".format(fav_file, system_name))
+                    display = "{} [{}]".format(fav_file, system_name)
                 else:
-                    args.append(str(fav_file))
+                    display = str(fav_file)
             else:
-                args.append(str(fav_file))
+                display = str(fav_file)
+
+            if len(display) >= 65:
+                display = "..." + display[-62:]
+
+            args.append(display)
             number += 1
 
         result = subprocess.run(args, stderr=subprocess.PIPE)
