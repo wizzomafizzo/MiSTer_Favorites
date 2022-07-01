@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from email.policy import default
 import os
 import subprocess
 import sys
@@ -7,11 +8,10 @@ import glob
 import re
 import zipfile
 
-FAVORITES_NAME = "_@Favorites"
+FAVORITES_DEFAULT = "_@Favorites"
+FAVORITES_NAMES = {"favorites", "favourites", "favs"}
 
 SD_ROOT = "/media/fat"
-FAVORITES_DB = os.path.join(SD_ROOT, "favorites.txt")
-FAVORITES_FOLDER = os.path.join(SD_ROOT, FAVORITES_NAME)
 STARTUP_SCRIPT = "/media/fat/linux/user-startup.sh"
 
 EXTERNAL_FOLDER = "/media/usb0"
@@ -60,7 +60,7 @@ MGL_MAP = (
     ("S32X", "_Console/S32X", (({".32x"}, 1, "f", 0),)),
     ("SMS", "_Console/SMS", (({".sms", ".sg"}, 1, "f", 1), ({".gg"}, 1, "f", 2))),
     ("SNES", "_Console/SNES", (({".sfc", ".smc"}, 2, "f", 0),)),
-        (
+    (
         "TGFX16-CD",
         "_Console/TurboGrafx16",
         (({".cue", ".chd"}, 1, "s", 0),),
@@ -95,6 +95,8 @@ SELECTION_HISTORY = {
     "__MAIN__": "1",
 }
 
+BAD_CHARS = '<>:"/\|?*'
+
 
 def get_selection(path):
     if path in SELECTION_HISTORY:
@@ -106,6 +108,15 @@ def get_selection(path):
 def set_selection(path, selection):
     global SELECTION_HISTORY
     SELECTION_HISTORY[path] = str(selection)
+
+
+def relative_path(s):
+    return s.replace(SD_ROOT + os.path.sep, "")
+
+
+# characters that aren't allowed in a filename
+def has_bad_chars(s):
+    return any(i in s for i in BAD_CHARS)
 
 
 def is_favorite_file(path):
@@ -142,6 +153,18 @@ def get_favorite_target(path):
         return ""
 
 
+def get_favorite_folders():
+    folders = []
+
+    for i in os.listdir(SD_ROOT):
+        path = os.path.join(SD_ROOT, i)
+        for part in FAVORITES_NAMES:
+            if os.path.isdir(path) and i.startswith("_") and part in i.lower():
+                folders.append(path)
+
+    return folders
+
+
 def get_favorites():
     favorites = []
 
@@ -150,11 +173,12 @@ def get_favorites():
         if is_favorite_file(path):
             favorites.append([get_favorite_target(path), path])
 
-    for root, dirs, files in os.walk(FAVORITES_FOLDER):
-        for file in files:
-            path = os.path.join(root, file)
-            if is_favorite_file(path):
-                favorites.append([get_favorite_target(path), path])
+    for folder in get_favorite_folders():
+        for root, dirs, files in os.walk(folder):
+            for file in files:
+                path = os.path.join(root, file)
+                if is_favorite_file(path):
+                    favorites.append([get_favorite_target(path), path])
 
     return favorites
 
@@ -185,12 +209,13 @@ def make_mgl(rbf, delay, type, index, path):
 
 
 def create_favorites_folder():
-    if not os.path.exists(FAVORITES_FOLDER):
-        os.mkdir(FAVORITES_FOLDER)
+    default_path = os.path.join(SD_ROOT, FAVORITES_DEFAULT)
+    if len(get_favorite_folders()) == 0 and not os.path.exists(default_path):
+        os.mkdir(default_path)
 
 
 # delete any create folder and symlinks that aren't required anymore
-# TODO: this doesn't work well
+# TODO: this doesn't work well, rewrite
 def cleanup_favorites():
     root_cores = os.path.join(SD_ROOT, "cores")
     if (
@@ -199,14 +224,14 @@ def cleanup_favorites():
     ):
         # delete the root cores symlink if it's safe
         os.remove(root_cores)
-    if os.path.exists(FAVORITES_FOLDER):
-        files = os.listdir(FAVORITES_FOLDER)
-        if len(files) == 0:
-            os.rmdir(FAVORITES_FOLDER)
-        elif len(files) == 1 and files[0] == "cores":
-            # clean up favorites arcade cores symlink
-            os.remove(os.path.join(FAVORITES_FOLDER, "cores"))
-            os.rmdir(FAVORITES_FOLDER)
+    # if os.path.exists(FAVORITES_FOLDER):
+    #     files = os.listdir(FAVORITES_FOLDER)
+    #     if len(files) == 0:
+    #         os.rmdir(FAVORITES_FOLDER)
+    #     elif len(files) == 1 and files[0] == "cores":
+    #         # clean up favorites arcade cores symlink
+    #         os.remove(os.path.join(FAVORITES_FOLDER, "cores"))
+    #         os.rmdir(FAVORITES_FOLDER)
 
 
 def get_menu_output(output):
@@ -253,7 +278,7 @@ def display_main_menu():
         number = 2
         for entry in config:
             args.append(str(number))
-            fav_file = entry[1].replace(SD_ROOT, "")[1:]
+            fav_file = relative_path(entry[1])
             name, ext = os.path.splitext(fav_file)
 
             if len(name) >= 65:
@@ -324,35 +349,121 @@ def display_add_favorite_name(item, msg=None):
         return None
 
 
-def display_add_favorite_folder():
+def display_edit_folder_name(parent, default_name=None, msg=None):
+    if msg is not None:
+        msg_args = [
+            "dialog",
+            "--title",
+            WINDOW_TITLE,
+            "--msgbox",
+            msg,
+            WINDOW_DIMENSIONS[0],
+            WINDOW_DIMENSIONS[1],
+        ]
+        subprocess.run(msg_args)
+
     args = [
         "dialog",
         "--title",
         WINDOW_TITLE,
+        "--inputbox",
+        "Enter a name for the folder. It must start with an underscore (_).",
+        WINDOW_DIMENSIONS[0],
+        WINDOW_DIMENSIONS[1],
+        default_name or "_",
+    ]
+
+    result = subprocess.run(args, stderr=subprocess.PIPE)
+    name = str(result.stderr.decode())
+    button = get_menu_output(result.returncode)
+
+    if button == 0:
+        if not name.startswith("_"):
+            return display_edit_folder_name(
+                parent,
+                msg="Name must start with an underscore (_)."
+            )
+        elif name == "_":
+            return display_edit_folder_name(parent, msg="Display name cannot be empty.")
+        elif has_bad_chars(name):
+            return display_edit_folder_name(
+                parent,
+                default_name=name,
+                msg="Name cannot contain any of these characters: " + BAD_CHARS
+            )
+        elif os.path.exists(os.path.join(parent, name)):
+            return display_edit_folder_name(
+                parent,
+                default_name=name,
+                msg="Folder with this name already exists."
+            )
+        else:
+            return os.path.join(parent, name)
+    else:
+        return
+
+
+def display_create_folder():
+    parent = display_add_favorite_folder(
+        include_root=False, msg="Select a parent folder for the new folder."
+    )
+    if parent is None:
+        return
+
+    path = display_edit_folder_name(os.path.join(SD_ROOT, parent))
+    if path is None:
+        return
+
+    os.mkdir(path)
+
+
+def display_add_favorite_folder(
+    include_root=True, msg="Select a folder to place favorite."
+):
+    args = [
+        "dialog",
+        "--title",
+        WINDOW_TITLE,
+    ]
+
+    if include_root:
+        args = args + [
+            "--extra-button",
+            "--extra-label",
+            "New Folder",
+        ]
+    
+    args = args + [
         "--ok-label",
         "Select",
         "--menu",
-        "Select a folder to place favorite.",
+        msg,
         WINDOW_DIMENSIONS[0],
         WINDOW_DIMENSIONS[1],
         WINDOW_DIMENSIONS[2],
-        "1",
-        "<TOP LEVEL>",
-        "2",
-        "{}/".format(FAVORITES_NAME),
     ]
 
-    idx = 3
-    subfolders = []
+    if include_root:
+        args.append("1")
+        args.append("<TOP LEVEL>")
+        idx = 2
+    else:
+        idx = 1
 
-    for root, dirs, files in os.walk(os.path.join(SD_ROOT, FAVORITES_NAME)):
-        for item in dirs:
-            path = os.path.join(root, item)
-            if os.path.isdir(path) and item.startswith("_"):
-                subfolders.append(path.replace(SD_ROOT + os.path.sep, ""))
+    favorite_folders = get_favorite_folders()
+    folders = []
 
+    for folder in favorite_folders:
+        folders.append(relative_path(folder))
+        for root, dirs, files in os.walk(folder):
+            for d in dirs:
+                path = os.path.join(root, d)
+                if os.path.isdir(path) and d.startswith("_"):
+                    folders.append(relative_path(path))
 
-    for item in sorted(subfolders, key=str.lower):
+    folders.sort(key=str.lower)
+
+    for item in folders:
         args.append(str(idx))
         args.append("{}/".format(item))
         idx += 1
@@ -363,12 +474,15 @@ def display_add_favorite_folder():
     button = get_menu_output(result.returncode)
 
     if button == 0:
-        if selection == 1:
+        if include_root and selection == 1:
             return "__ROOT__"
-        elif selection == 2:
-            return FAVORITES_NAME
+        elif include_root:
+            return folders[selection - 2]
         else:
-            return subfolders[selection - 3]
+            return folders[selection - 1]
+    elif button == 3:
+        display_create_folder()
+        return display_add_favorite_folder()
     else:
         return None
 
@@ -418,11 +532,13 @@ def display_modify_favorite(path, msg=None):
     elif button == 0:
         # rename
         new_path = os.path.join(os.path.dirname(path), name + ext)
-        
+
         if name == "":
             return display_modify_favorite(path, "Name cannot be empty.")
         elif os.path.exists(new_path):
-            return display_modify_favorite(path, "Favorite with this name already exists.")
+            return display_modify_favorite(
+                path, "Favorite with this name already exists."
+            )
 
         rename_favorite(path, new_path)
         return
@@ -437,7 +553,7 @@ def display_delete_favorite(path):
         "--title",
         WINDOW_TITLE,
         "--yesno",
-        "Delete favorite {}?".format(path.replace(SD_ROOT, "")),
+        "Delete favorite {}?".format(relative_path(path)),
         WINDOW_DIMENSIONS[0],
         WINDOW_DIMENSIONS[1],
     ]
@@ -765,15 +881,12 @@ def setup_arcade_files():
     if not os.path.exists(root_cores_link):
         os.symlink(cores_folder, root_cores_link)
 
-    favs_cores_link = os.path.join(FAVORITES_FOLDER, "cores")
-    if os.path.exists(FAVORITES_FOLDER) and not os.path.exists(favs_cores_link):
-        os.symlink(cores_folder, favs_cores_link)
-
-    for root, dirs, files in os.walk(os.path.join(SD_ROOT, FAVORITES_NAME)):
-        for d in dirs:
-            cores_link = os.path.join(root, d, "cores")
-            if not os.path.exists(cores_link):
-                os.symlink(cores_folder, cores_link)
+    for folder in get_favorite_folders():
+        for root, dirs, files in os.walk(folder):
+            for d in dirs:
+                cores_link = os.path.join(root, d, "cores")
+                if not os.path.exists(cores_link):
+                    os.symlink(cores_folder, cores_link)
 
 
 if __name__ == "__main__":
