@@ -648,13 +648,15 @@ def display_modify_item(path):
 
 
 # go through all favorites, delete broken ones and attempt to fix updated cores
-# TODO: make this work for mgl files
 def refresh_favorites():
     broken = []
 
     for entry in get_favorites():
         # probably an mgl file
         if not os.path.islink(entry[1]):
+            target = get_favorite_target(entry[1])
+            if target != "" and not os.path.exists(target):
+                remove_favorite(entry[1])
             continue
 
         linked = os.readlink(entry[1])
