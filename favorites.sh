@@ -108,33 +108,15 @@ def set_selection(path, selection):
     SELECTION_HISTORY[path] = str(selection)
 
 
-# read favorites file and return list of [target core -> link location]
-def read_config():
-    if os.path.exists(FAVORITES_DB):
-        favorites = []
-        with open(FAVORITES_DB, "r") as f:
-            for line in f.readlines():
-                entry = line.split("\t")
-                if len(entry) == 2:
-                    favorites.append([entry[0], entry[1].rstrip()])
-        return favorites
+def is_favorite_file(path):
+    name, ext = os.path.splitext(path)
+    ext = ext.lower()
+    if ext == ".mgl":
+        return True
+    elif (ext == ".rbf" or ext == ".mra") and os.path.islink(path):
+        return True
     else:
-        return []
-
-
-# write list of [target core -> link location] to favorites file
-def write_config(favorites):
-    with open(FAVORITES_DB, "w") as f:
-        for entry in favorites:
-            f.write("{}\t{}\n".format(entry[0], entry[1]))
-
-
-def create_link(entry):
-    os.symlink(entry[0], entry[1])
-
-
-def delete_link(entry):
-    os.remove(entry[1])
+        return False
 
 
 # check if symlink goes to an existing file
@@ -145,45 +127,56 @@ def link_valid(entry):
         return False
 
 
+def get_favorite_target(path):
+    name, ext = os.path.splitext(path)
+    if os.path.islink(path):
+        return os.readlink(path)
+    elif ext == ".mgl":
+        with open(path, "r") as f:
+            match = re.match(r'path="\.\./\.\./\.\./\.\.(.+)"', f.read(), re.MULTILINE)
+            if match:
+                return match.group(1)
+            else:
+                return ""
+    else:
+        return ""
+
+
+def get_favorites():
+    favorites = []
+
+    for i in os.listdir(SD_ROOT):
+        path = os.path.join(SD_ROOT, i)
+        if is_favorite_file(path):
+            favorites.append([get_favorite_target(path), path])
+
+    for root, dirs, files in os.walk(FAVORITES_FOLDER):
+        for file in files:
+            path = os.path.join(root, file)
+            if is_favorite_file(path):
+                favorites.append([get_favorite_target(path), path])
+
+    return favorites
+
+
 def add_favorite(core_path, favorite_path):
-    config = read_config()
-    entry = [core_path, favorite_path]
-    create_link(entry)
-    config.append(entry)
-    write_config(config)
+    os.symlink(core_path, favorite_path)
 
 
 def add_favorite_mgl(core_path, mgl_path, mgl_data):
-    config = read_config()
     entry = [core_path, mgl_path]
     with open(mgl_path, "w") as f:
         f.write(mgl_data)
-    config.append(entry)
-    write_config(config)
 
 
 def remove_favorite(path):
-    config = read_config()
-    if len(config) == 0:
-        return
-    idx = 0
-    for entry in config:
-        if entry[1] == path:
-            config.pop(idx)
-            delete_link(entry)
-            break
-        idx += 1
-    write_config(config)
+    if is_favorite_file(path):
+        os.remove(path)
 
 
 def rename_favorite(path, new_path):
     os.rename(path, new_path)
-    config = read_config()
-    for entry in config:
-        if entry[1] == path:
-            entry[1] = new_path
-            break
-    write_config(config)
+
 
 # generate XML contents for MGL file
 def make_mgl(rbf, delay, type, index, path):
@@ -197,6 +190,7 @@ def create_favorites_folder():
 
 
 # delete any create folder and symlinks that aren't required anymore
+# TODO: this doesn't work well
 def cleanup_favorites():
     root_cores = os.path.join(SD_ROOT, "cores")
     if (
@@ -232,7 +226,7 @@ def get_mgl_system(path):
 
 
 def display_main_menu():
-    config = sorted(read_config(), key=lambda x: x[1].lower())
+    config = sorted(get_favorites(), key=lambda x: x[1].lower())
 
     def menu():
         args = [
@@ -259,20 +253,13 @@ def display_main_menu():
         number = 2
         for entry in config:
             args.append(str(number))
-            fav_file = entry[1].replace(SD_ROOT, "")
-            if entry[1].endswith(".mgl"):
-                system_name = get_mgl_system(entry[1])
-                display = ""
+            fav_file = entry[1].replace(SD_ROOT, "")[1:]
+            name, ext = os.path.splitext(fav_file)
 
-                if system_name is not None:
-                    display = "{} [{}]".format(fav_file, system_name)
-                else:
-                    display = str(fav_file)
+            if len(name) >= 65:
+                display = "..." + name[-62:]
             else:
-                display = str(fav_file)
-
-            if len(display) >= 65:
-                display = "..." + display[-62:]
+                display = name
 
             args.append(display)
             number += 1
@@ -386,6 +373,7 @@ def display_add_favorite_folder():
         return None
 
 
+# TODO: show metadata like system etc
 def display_modify_favorite(path, msg=None):
     # display a message box first if there's a problem
     if msg is not None:
@@ -466,11 +454,11 @@ def display_delete_favorite(path):
 
 
 # go through all favorites, delete broken ones and attempt to fix updated cores
+# TODO: make this work for mgl files
 def refresh_favorites():
-    config = read_config()
     broken = []
 
-    for entry in config:
+    for entry in get_favorites():
         # probably an mgl file
         if not os.path.islink(entry[1]):
             continue
