@@ -208,11 +208,16 @@ def make_mgl(rbf, delay, type, index, path):
     return mgl.format(rbf, delay, type, index, path)
 
 
-def create_favorites_folder():
+def create_default_favorites():
     default_path = os.path.join(SD_ROOT, FAVORITES_DEFAULT)
     if len(get_favorite_folders()) == 0 and not os.path.exists(default_path):
         os.mkdir(default_path)
 
+
+def cleanup_default_favorites():
+    default_path = os.path.join(SD_ROOT, FAVORITES_DEFAULT)
+    if os.path.exists(default_path) and len(os.listdir(default_path)) == 0:
+        os.rmdir(default_path)
 
 def get_menu_output(output):
     try:
@@ -642,6 +647,8 @@ def display_modify_item(path):
                 include_root=not os.path.isdir(path), ignore_path=path
             )
             if folder is not None:
+                if folder == "__ROOT__":
+                    folder = ""
                 os.rename(path, os.path.join(SD_ROOT, folder, os.path.basename(path)))
         elif selection == 3:
             display_delete_favorite(path)
@@ -969,6 +976,9 @@ def setup_arcade_files():
         os.symlink(cores_folder, root_cores_link)
 
     for folder in get_favorite_folders():
+        root_cores_link = os.path.join(SD_ROOT, "cores")
+        if not os.path.exists(root_cores_link):
+            os.symlink(cores_folder, root_cores_link)
         for root, dirs, files in os.walk(folder):
             for d in dirs:
                 cores_link = os.path.join(root, d, "cores")
@@ -982,7 +992,7 @@ if __name__ == "__main__":
     if len(sys.argv) == 2 and sys.argv[1] == "refresh":
         refresh_favorites()
     else:
-        create_favorites_folder()
+        create_default_favorites()
         setup_arcade_files()
 
         refresh_favorites()
