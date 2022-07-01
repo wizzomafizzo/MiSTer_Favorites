@@ -12,7 +12,7 @@ This script works well with the [Games Menu](https://github.com/wizzomafizzo/MiS
 * Automatically generates .mgl files to launch games directly from the menu.
 * Supports selecting games from inside .zip files.
 * Automatically fixes broken shortcuts when a core has been updated.
-* Edit and remove existing favorite entries from the GUI.
+* Edit and remove existing favorite entries and folders from the GUI.
 * Works without a keyboard.
 
 ## Installation
@@ -35,10 +35,10 @@ Launch `favorites` from the Scripts menu and follow the prompts.
 
 ## FAQ
 
+* *Can I rename the @Favorites folder?*
+
+  Yes, go for it. It's just the default. The only restriction on the name is it needs to include "fav" somewhere and start with an underscore. `_#Favorites`, `_@Favourites` and `_my cool favs` are all valid names and will be picked up by the script. You can also create multiple favorite directories following this convention.
+
 * *Why can't I add games for a certain system?*
 
   Support for direct game links depend on a core's own support for .mgl files. Submit a feature request with the core's author if you want support added. Report an issue here if you know the core already has .mgl support, and it can be added to work with this script.
-
-* *Can I add subfolders to the @Favorites menu?*
-
-  Yes, but you have to set them up yourself. Create any number or depth of folders yourself in the @Favorites folder and the script will automatically pick up on them when it's time to select where a favorite will go. Make sure every folder you create has a `_` in front of the name, or else the MiSTer menu won't see it. There are currently no plans to add support for managing subfolders from the Favorites GUI.
