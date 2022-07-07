@@ -1,12 +1,15 @@
 #!/usr/bin/env python
 
-from email.policy import default
 import os
 import subprocess
 import sys
 import glob
 import re
 import zipfile
+
+# TODO: people who only use root favs will keep getting the default folder
+# TODO: mgl map shouldn't rely on order
+# TODO: add back cleanup function
 
 FAVORITES_DEFAULT = "_@Favorites"
 FAVORITES_NAMES = {"fav"}
@@ -976,14 +979,14 @@ def setup_arcade_files():
         os.symlink(cores_folder, root_cores_link)
 
     for folder in get_favorite_folders():
-        root_cores_link = os.path.join(SD_ROOT, "cores")
-        if not os.path.exists(root_cores_link):
-            os.symlink(cores_folder, root_cores_link)
+        top_cores_link = os.path.join(SD_ROOT, "cores")
+        if not os.path.exists(top_cores_link):
+            os.symlink(cores_folder, top_cores_link)
         for root, dirs, files in os.walk(folder):
             for d in dirs:
-                cores_link = os.path.join(root, d, "cores")
-                if not os.path.exists(cores_link):
-                    os.symlink(cores_folder, cores_link)
+                sub_cores_link = os.path.join(root, d, "cores")
+                if not os.path.exists(sub_cores_link):
+                    os.symlink(cores_folder, sub_cores_link)
 
 
 if __name__ == "__main__":

@@ -26,7 +26,7 @@ Favorites can be automatically updated with the MiSTer downloader script (and up
 
 ```
 [favorites]
-db_url = 'https://raw.githubusercontent.com/wizzomafizzo/MiSTer_Favorites/main/favorites.json'
+db_url = https://raw.githubusercontent.com/wizzomafizzo/MiSTer_Favorites/main/favorites.json
 ```
 
 ## Usage
