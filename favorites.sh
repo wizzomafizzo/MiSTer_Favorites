@@ -669,11 +669,6 @@ def refresh_favorites():
 
     for entry in get_favorites():
         if not os.path.islink(entry[1]):
-            # mgl file
-            target = get_favorite_target(entry[1])
-            if target != "" and not os.path.exists(target) and not zip_path(target):
-                # FIXME: can we include zips in this?
-                remove_favorite(entry[1])
             continue
 
         linked = os.readlink(entry[1])
