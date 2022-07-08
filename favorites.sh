@@ -7,10 +7,6 @@ import glob
 import re
 import zipfile
 
-# TODO: people who only use root favs will keep getting the default folder
-# TODO: mgl map shouldn't rely on order
-# TODO: add back cleanup function
-
 FAVORITES_DEFAULT = "_@Favorites"
 FAVORITES_NAMES = {"fav"}
 
@@ -222,7 +218,14 @@ def create_default_favorites():
 
 def cleanup_default_favorites():
     default_path = os.path.join(SD_ROOT, FAVORITES_DEFAULT)
-    if os.path.exists(default_path) and len(os.listdir(default_path)) == 0:
+    cores_path = os.path.join(default_path, "cores")
+
+    if (
+        os.path.exists(default_path)
+        and len(os.listdir(default_path)) == 1
+        and os.path.exists(cores_path)
+    ):
+        os.remove(cores_path)
         os.rmdir(default_path)
 
 
@@ -732,6 +735,8 @@ def zip_path(path: str):
 
 
 def zip_files(zip_path: str, zip_folder: str):
+    # FIXME: there must be a more efficient way to do all this, but I couldn't
+    #        get the Path class to work properly
     full_path = os.path.join(zip_path, zip_folder)
 
     cache = ZIP_FILTER_CACHE.get(full_path, None)
@@ -1002,7 +1007,7 @@ def setup_arcade_files():
         os.symlink(cores_folder, root_cores_link)
 
     for folder in get_favorite_folders():
-        top_cores_link = os.path.join(SD_ROOT, "cores")
+        top_cores_link = os.path.join(folder, "cores")
         if not os.path.exists(top_cores_link):
             os.symlink(cores_folder, top_cores_link)
         for root, dirs, files in os.walk(folder):
@@ -1020,7 +1025,6 @@ if __name__ == "__main__":
     else:
         create_default_favorites()
         setup_arcade_files()
-
         refresh_favorites()
 
         selection = display_main_menu()
@@ -1032,3 +1036,5 @@ if __name__ == "__main__":
 
             selection = display_main_menu()
         print("")
+
+        cleanup_default_favorites()
