@@ -56,7 +56,7 @@ MGL_MAP = (
     (
         "NeoGeo",
         "_Console/NeoGeo",
-        (({".neo", ".zip"}, 1, "f", 1), ({".iso", ".bin"}, 1, "s", 1)),
+        (({".neo"}, 1, "f", 1), ({".iso", ".bin"}, 1, "s", 1)),
     ),
     ("NES", "_Console/NES", (({".nes", ".fds", ".nsf"}, 1, "f", 0),)),
     ("PSX", "_Console/PSX", (({".cue", ".chd"}, 1, "s", 1),)),
@@ -100,6 +100,9 @@ SELECTION_HISTORY = {
 
 BAD_CHARS = '<>:"/\|?*'
 
+ZIP_FILE_CACHE = {}
+ZIP_FILTER_CACHE = {}
+
 
 def get_selection(path):
     if path in SELECTION_HISTORY:
@@ -114,7 +117,7 @@ def set_selection(path, selection):
 
 
 def relative_path(s):
-    return s.replace(SD_ROOT + os.path.sep, "")
+    return s.replace(SD_ROOT + "/", "")
 
 
 # characters that aren't allowed in a filename
@@ -221,6 +224,7 @@ def cleanup_default_favorites():
     default_path = os.path.join(SD_ROOT, FAVORITES_DEFAULT)
     if os.path.exists(default_path) and len(os.listdir(default_path)) == 0:
         os.rmdir(default_path)
+
 
 def get_menu_output(output):
     try:
@@ -640,7 +644,9 @@ def display_modify_item(path):
     if button == 0:
         if selection == 1:
             if os.path.isdir(path):
-                new_path = display_edit_folder_name(os.path.dirname(path), default_name=name)
+                new_path = display_edit_folder_name(
+                    os.path.dirname(path), default_name=name
+                )
                 if new_path:
                     os.rename(path, new_path)
             else:
@@ -662,10 +668,11 @@ def refresh_favorites():
     broken = []
 
     for entry in get_favorites():
-        # probably an mgl file
         if not os.path.islink(entry[1]):
+            # mgl file
             target = get_favorite_target(entry[1])
-            if target != "" and not os.path.exists(target):
+            if target != "" and not os.path.exists(target) and not zip_path(target):
+                # FIXME: can we include zips in this?
                 remove_favorite(entry[1])
             continue
 
@@ -716,6 +723,54 @@ def match_games_folder(folder: str):
     return "__CORE__", None
 
 
+def zip_path(path: str):
+    if path.lower().endswith(".zip"):
+        if zipfile.is_zipfile(path):
+            return path, ""
+        else:
+            return
+
+    match = re.match(r"(.*\.zip)/(.*)", path, re.IGNORECASE)
+    if match:
+        if zipfile.is_zipfile(match.group(1)):
+            return match.group(1), match.group(2)
+
+
+def zip_files(zip_path: str, zip_folder: str):
+    full_path = os.path.join(zip_path, zip_folder)
+
+    cache = ZIP_FILTER_CACHE.get(full_path, None)
+    if cache is not None:
+        return cache
+
+    zip = zipfile.ZipFile(zip_path)
+    files = ZIP_FILE_CACHE.get(zip_path, None)
+    if files is None:
+        files = zip.namelist()
+        ZIP_FILE_CACHE[zip_path] = files
+
+    filtered = set()
+
+    def add_path(path):
+        if "/" not in path:
+            filtered.add(path)
+        elif path.count("/") == 1:
+            filtered.add(path.split("/")[0] + "/")
+
+    if zip_folder == "":
+        for fn in files:
+            add_path(fn)
+    else:
+        files = [x for x in files if x.startswith(zip_folder)]
+        for fn in files:
+            rel_path = fn[len(zip_folder) + 1 :]
+            add_path(rel_path)
+
+    results = list(filtered)
+    ZIP_FILTER_CACHE[full_path] = results
+    return results
+
+
 # display menu to browse for and select launcher file
 def display_launcher_select(start_folder):
     def menu(folder: str):
@@ -723,45 +778,43 @@ def display_launcher_select(start_folder):
         files = []
         file_type, mgl = match_games_folder(folder)
 
-        zip = None
-        if folder.lower().endswith(".zip"):
-            if not zipfile.is_zipfile(folder):
-                return file_type, os.path.dirname(folder)
-            zip = zipfile.ZipFile(folder)
-
-        if zip is not None:
-            dir = [x for x in zip.namelist() if "/" not in x]
+        in_zip = zip_path(folder)
+        if in_zip:
+            dir = zip_files(*in_zip)
         else:
             dir = os.listdir(folder)
 
         # pick out and sort folders and valid files
-        for i in dir:
+        for fn in dir:
             # system roms
             if file_type != "__CORE__" and mgl is not None:
-                name, ext = os.path.splitext(i)
-                if os.path.isdir(os.path.join(folder, i)):
-                    subfolders.append(i)
+                name, ext = os.path.splitext(fn)
+                if os.path.isdir(os.path.join(folder, fn)):
+                    subfolders.append(fn)
+                    continue
+                elif in_zip and fn.endswith("/"):
+                    subfolders.append(fn[:-1])
                     continue
                 else:
                     for rom_type in mgl[2]:
-                        if ext in rom_type[0] or ext == ".zip":
-                            files.append(i)
+                        if ext in rom_type[0] or (ext == ".zip" and not in_zip):
+                            files.append(fn)
                             break
 
             # make an exception on sd root to show a clean version
             if HIDE_SD_FILES and folder == SD_ROOT:
-                if i.lower() in ALLOWED_SD_FILES:
-                    subfolders.append(i)
+                if fn.lower() in ALLOWED_SD_FILES:
+                    subfolders.append(fn)
                     continue
                 else:
                     continue
 
             # default list/rbf and mra cores
-            name, ext = os.path.splitext(i)
-            if os.path.isdir(os.path.join(folder, i)):
-                subfolders.append(i)
+            name, ext = os.path.splitext(fn)
+            if os.path.isdir(os.path.join(folder, fn)):
+                subfolders.append(fn)
             elif ext in CORE_FILES:
-                files.append(i)
+                files.append(fn)
 
         subfolders.sort(key=str.lower)
         files.sort(key=str.lower)
@@ -806,23 +859,20 @@ def display_launcher_select(start_folder):
             idx += 1
 
         # add everything to the menu list
-        for i in subfolders:
-            args.extend([str(idx), "{}/".format(i)])
-            all_items.append("{}/".format(i))
+        for fn in subfolders:
+            args.extend([str(idx), "{}/".format(fn)])
+            all_items.append("{}/".format(fn))
             idx += 1
 
-        for i in files:
-            args.extend([str(idx), i])
-            all_items.append(i)
+        for fn in files:
+            args.extend([str(idx), fn])
+            all_items.append(fn)
             idx += 1
 
         result = subprocess.run(args, stderr=subprocess.PIPE)
 
         selection = get_menu_output(result.stderr.decode())
         button = get_menu_output(result.returncode)
-
-        if zip is not None:
-            zip.close()
 
         if button == 0:
             if selection == "":
@@ -851,12 +901,7 @@ def display_launcher_select(start_folder):
         elif selected == "..":
             current_folder = os.path.dirname(current_folder)
         elif selected.lower().endswith(".zip"):
-            rbf, mgl_def = mgl_from_file(file_type, selected)
-            # exception for systems that actually accept zip files
-            if mgl_def is not None:
-                return file_type, os.path.join(current_folder, selected)
-            else:
-                current_folder = current_folder = os.path.join(current_folder, selected)
+            current_folder = os.path.join(current_folder, selected)
         else:
             return file_type, os.path.join(current_folder, selected)
 
@@ -887,23 +932,6 @@ def mgl_from_file(file_type, name):
                 if ext.lower() in rom_type[0]:
                     mgl_def = rom_type
     return rbf, mgl_def
-
-
-# return a relative rom path for mgl files
-def strip_games_folder(path: str):
-    items = os.path.normpath(path).split(os.path.sep)
-    idx = 0
-    rel_path = None
-    for name in items:
-        if name.lower() == "games" and (idx + 2) < len(items):
-            rel_path = os.path.join(*items[(idx + 2) :])
-            break
-        else:
-            idx += 1
-    if rel_path is None:
-        return path
-    else:
-        return rel_path
 
 
 def add_favorite_workflow():
