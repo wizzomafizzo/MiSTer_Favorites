@@ -7,6 +7,12 @@ import glob
 import re
 import zipfile
 
+# TODO: smarter cores link creation
+# TODO: cleanup cores links
+# TODO: dynamic win height/width
+# TODO: make msg windows smaller?
+# TODO: reuse dialog config in scripts?
+
 FAVORITES_DEFAULT = "_@Favorites"
 FAVORITES_NAMES = {"fav"}
 
@@ -96,11 +102,10 @@ SELECTION_HISTORY = {
 
 BAD_CHARS = '<>:"/\|?*'
 
-ZIP_FILE_CACHE = {}
-ZIP_FILTER_CACHE = {}
+ZIP_CACHE = {}
 
 
-def get_selection(path):
+def get_selection(path: str):
     if path in SELECTION_HISTORY:
         return str(SELECTION_HISTORY[path])
     else:
@@ -112,16 +117,16 @@ def set_selection(path, selection):
     SELECTION_HISTORY[path] = str(selection)
 
 
-def relative_path(s):
+def relative_path(s: str):
     return s.replace(SD_ROOT + "/", "")
 
 
 # characters that aren't allowed in a filename
-def has_bad_chars(s):
+def has_bad_chars(s: str):
     return any(i in s for i in BAD_CHARS)
 
 
-def is_favorite_file(path):
+def is_favorite_file(path: str):
     name, ext = os.path.splitext(path)
     ext = ext.lower()
     if ext == ".mgl":
@@ -140,7 +145,7 @@ def link_valid(entry):
         return False
 
 
-def get_favorite_target(path):
+def get_favorite_target(path: str):
     name, ext = os.path.splitext(path)
     if os.path.islink(path):
         return os.readlink(path)
@@ -735,40 +740,25 @@ def zip_path(path: str):
 
 
 def zip_files(zip_path: str, zip_folder: str):
-    # FIXME: there must be a more efficient way to do all this, but I couldn't
-    #        get the Path class to work properly
-    full_path = os.path.join(zip_path, zip_folder)
+    # FIXME: is there a more efficient way to do this? it's pretty slow
 
-    cache = ZIP_FILTER_CACHE.get(full_path, None)
+    full_path = os.path.join(zip_path, zip_folder)
+    cache = ZIP_CACHE.get(os.path.join(full_path), None)
     if cache is not None:
         return cache
 
     zip = zipfile.ZipFile(zip_path)
-    files = ZIP_FILE_CACHE.get(zip_path, None)
-    if files is None:
-        files = zip.namelist()
-        ZIP_FILE_CACHE[zip_path] = files
+    root = zipfile.Path(zip, zip_folder + "/")
+    files = []
 
-    filtered = set()
+    for i in root.iterdir():
+        if i.is_dir():
+            files.append(i.name + "/")
+        else:
+            files.append(i.name)
 
-    def add_path(path):
-        if "/" not in path:
-            filtered.add(path)
-        elif path.count("/") == 1:
-            filtered.add(path.split("/")[0] + "/")
-
-    if zip_folder == "":
-        for fn in files:
-            add_path(fn)
-    else:
-        files = [x for x in files if x.startswith(zip_folder)]
-        for fn in files:
-            rel_path = fn[len(zip_folder) + 1 :]
-            add_path(rel_path)
-
-    results = list(filtered)
-    ZIP_FILTER_CACHE[full_path] = results
-    return results
+    ZIP_CACHE[full_path] = files
+    return files
 
 
 # display menu to browse for and select launcher file
