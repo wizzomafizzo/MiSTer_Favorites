@@ -63,6 +63,7 @@ MGL_MAP = (
     ("NES", "_Console/NES", (({".nes", ".fds", ".nsf"}, 1, "f", 0),)),
     ("PSX", "_Console/PSX", (({".cue", ".chd"}, 1, "s", 1),)),
     ("S32X", "_Console/S32X", (({".32x"}, 1, "f", 0),)),
+    ("SGB", "_Console/SGB", (({".gb", ".gbc"}, 1, "f", 1),)),
     ("SMS", "_Console/SMS", (({".sms", ".sg"}, 1, "f", 1), ({".gg"}, 1, "f", 2))),
     ("SNES", "_Console/SNES", (({".sfc", ".smc"}, 2, "f", 0),)),
     (
@@ -150,12 +151,15 @@ def get_favorite_target(path: str):
     if os.path.islink(path):
         return os.readlink(path)
     elif ext == ".mgl":
-        with open(path, "r") as f:
-            match = re.search(r'path="\.\./\.\./\.\./\.\.(.+)"', f.read())
-            if match:
-                return match.group(1)
-            else:
-                return ""
+        try:
+            with open(path, "r") as f:
+                match = re.search(r'path="\.\./\.\./\.\./\.\.(.+)"', f.read())
+                if match:
+                    return match.group(1)
+                else:
+                    return ""
+        except:
+            return ""
     else:
         return ""
 
