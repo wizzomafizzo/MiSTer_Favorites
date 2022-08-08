@@ -49,11 +49,14 @@ LLAPI_ALL = False
 # to enable a specific LLAPI core, set a following line to true
 LLAPI_ATARI7800 = False
 LLAPI_GAMEBOY = False
+LLAPI_GBA2P = False
 LLAPI_GBA = False
 LLAPI_GENESIS = False
 LLAPI_MEGACD = False
 LLAPI_NEOGEO = False
 LLAPI_NES = False
+LLAPI_S32X = False
+LLAPI_SGB = False
 LLAPI_SMS = False
 LLAPI_SNES = False
 LLAPI_TGFX16_CD = False
@@ -70,10 +73,7 @@ MGL_MAP = (
         (({".col", ".bin", ".rom", ".sg"}, 1, "f", 0),),
     ),
     ("GAMEBOY2P", "_Console/Gameboy2P", (({".gb", ".gbc"}, 1, "f", 1),)),
-    ("GBA2P", "_Console/GBA2P", (({".gba"}, 1, "f", 0),)),
     ("PSX", "_Console/PSX", (({".cue", ".chd"}, 1, "s", 1),)),
-    ("S32X", "_Console/S32X", (({".32x"}, 1, "f", 0),)),
-    ("SGB", "_Console/SGB", (({".gb", ".gbc"}, 1, "f", 1),)),
     ("VECTREX", "_Console/Vectrex", (({".ovr", ".vec", ".bin", ".rom"}, 1, "f", 1),)),
     ("WonderSwan", "_Console/WonderSwan", (({".wsc", ".ws"}, 1, "f", 1),)),
 )
@@ -83,6 +83,11 @@ if LLAPI_ALL or LLAPI_ATARI7800:
     MGL_MAP = MGL_MAP + (("ATARI7800", "_LLAPI/Atari7800_LLAPI", (({".a78", ".a26", ".bin"}, 1, "f", 1),)),)
 else:
     MGL_MAP = MGL_MAP + (("ATARI7800", "_Console/Atari7800", (({".a78", ".a26", ".bin"}, 1, "f", 1),)),)
+
+if LLAPI_ALL or LLAPI_GBA2P:
+    MGL_MAP = MGL_MAP + (("GBA2P", "_LLAPI/GBA2P_LLAPI", (({".gba"}, 1, "f", 0),)),)
+else:
+    MGL_MAP = MGL_MAP + (("GBA2P", "_Console/GBA2P", (({".gba"}, 1, "f", 0),)),)
 
 if LLAPI_ALL or LLAPI_GBA:
     MGL_MAP = MGL_MAP + (("GBA", "_LLAPI/GBA_LLAPI", (({".gba"}, 1, "f", 0),)),)
@@ -104,7 +109,7 @@ if LLAPI_ALL or LLAPI_MEGACD:
 else:
     MGL_MAP = MGL_MAP + (("MegaCD", "_Console/MegaCD", (({".cue", ".chd"}, 1, "s", 0),)),)
 
-if LLAPI_ALL or LLAPI_NEOGEO:    
+if LLAPI_ALL or LLAPI_NEOGEO:
     MGL_MAP = MGL_MAP + ((
         "NeoGeo",
         "_LLAPI/NeoGeo_LLAPI",
@@ -121,6 +126,16 @@ if LLAPI_ALL or LLAPI_NES:
     MGL_MAP = MGL_MAP + (("NES", "_LLAPI/NES_LLAPI", (({".nes", ".fds", ".nsf"}, 1, "f", 0),)),)
 else:
     MGL_MAP = MGL_MAP + (("NES", "_Console/NES", (({".nes", ".fds", ".nsf"}, 1, "f", 0),)),)
+
+if LLAPI_ALL or LLAPI_S32X:
+    MGL_MAP = MGL_MAP + (("S32X", "_LLAPI/S32X_LLAPI", (({".32x"}, 1, "f", 0),)),)
+else:
+    MGL_MAP = MGL_MAP + (("S32X", "_Console/S32X", (({".32x"}, 1, "f", 0),)),)
+
+if LLAPI_ALL or LLAPI_SGB:
+    MGL_MAP = MGL_MAP + (("SGB", "_LLAPI/SGB_LLAPI", (({".gb", ".gbc"}, 1, "f", 1),)),)
+else:
+    MGL_MAP = MGL_MAP + (("SGB", "_Console/SGB", (({".gb", ".gbc"}, 1, "f", 1),)),)
 
 if LLAPI_ALL or LLAPI_SMS:
     MGL_MAP = MGL_MAP + (("SMS", "_LLAPI/SMS_LLAPI", (({".sms", ".sg"}, 1, "f", 1), ({".gg"}, 1, "f", 2))),)
