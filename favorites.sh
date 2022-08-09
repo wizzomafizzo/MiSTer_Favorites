@@ -36,17 +36,10 @@ ALLOWED_SD_FILES = {
     "games",
 }
 
-# test for presence of LLAPI cores; if there, add to browser
-if os.path.exists(os.path.join(SD_ROOT, "_llapi")):
-    ALLOWED_SD_FILES.add("_llapi")
+# set to True to use LLAPI cores if found; set to False to ignore LLAPI cores
+ENABLE_LLAPI = True
 
-CORE_FILES = {".rbf", ".mra", ".mgl"}
-
-# decide whether to use LLAPI core:
-# for all-or-nothing, set LLAPI_ALL to True
-LLAPI_ALL = False
-
-# to enable a specific LLAPI core, set a following line to true
+# assume each LLAPI core isn't there before we check for
 LLAPI_ATARI7800 = False
 LLAPI_GAMEBOY = False
 LLAPI_GBA2P = False
@@ -61,6 +54,29 @@ LLAPI_SMS = False
 LLAPI_SNES = False
 LLAPI_TGFX16_CD = False
 LLAPI_TGFX16 = False
+
+# test for presence of LLAPI cores; if there, add to browser
+if ENABLE_LLAPI:
+    if os.path.exists(os.path.join(SD_ROOT, "_llapi")):
+        # LLAPI_FOUND = True
+        ALLOWED_SD_FILES.add("_llapi")
+        llapi_dir = os.path.join(SD_ROOT, "_llapi")
+        LLAPI_ATARI7800 = len(glob.glob("Atari7800*.rbf", root_dir=llapi_dir)) > 0
+        LLAPI_GAMEBOY = len(glob.glob("GBA2P*.rbf", root_dir=llapi_dir)) > 0
+        LLAPI_GBA2P = len(glob.glob("GBA*.rbf", root_dir=llapi_dir)) > 0
+        LLAPI_GBA = len(glob.glob("Gameboy*.rbf", root_dir=llapi_dir)) > 0
+        LLAPI_GENESIS = len(glob.glob("Genesis*.rbf", root_dir=llapi_dir)) > 0
+        LLAPI_MEGACD = len(glob.glob("MegaCD*.rbf", root_dir=llapi_dir)) > 0
+        LLAPI_NEOGEO = len(glob.glob("NeoGeo*.rbf", root_dir=llapi_dir)) > 0
+        LLAPI_NES = len(glob.glob("NES*.rbf", root_dir=llapi_dir)) > 0
+        LLAPI_S32X = len(glob.glob("S32X*.rbf", root_dir=llapi_dir)) > 0
+        LLAPI_SGB = len(glob.glob("SGB*.rbf", root_dir=llapi_dir)) > 0
+        LLAPI_SMS = len(glob.glob("SMS*.rbf", root_dir=llapi_dir)) > 0
+        LLAPI_SNES = len(glob.glob("SNES*.rbf", root_dir=llapi_dir)) > 0
+        LLAPI_TGFX16_CD = len(glob.glob("TurboGrafx16*.rbf", root_dir=llapi_dir)) > 0
+        LLAPI_TGFX16 = len(glob.glob("TurboGrafx16*.rbf", root_dir=llapi_dir))> 0
+
+CORE_FILES = {".rbf", ".mra", ".mgl"}
 
 # (<games folder name>, <relative rbf location>, (<set of file extensions>, <delay>, <type>, <index>)[])
 MGL_MAP = (
@@ -78,106 +94,91 @@ MGL_MAP = (
     ("WonderSwan", "_Console/WonderSwan", (({".wsc", ".ws"}, 1, "f", 1),)),
 )
 
+core = ""
 # select which core to add to MGL_MAP, based on each configuration choice
-if LLAPI_ALL or LLAPI_ATARI7800:
-    MGL_MAP = MGL_MAP + (("ATARI7800", "_LLAPI/Atari7800_LLAPI", (({".a78", ".a26", ".bin"}, 1, "f", 1),)),)
+if ENABLE_LLAPI and LLAPI_ATARI7800:
+    core = "_LLAPI/Atari7800_LLAPI"
 else:
-    MGL_MAP = MGL_MAP + (("ATARI7800", "_Console/Atari7800", (({".a78", ".a26", ".bin"}, 1, "f", 1),)),)
+    core = "_Console/Atari7800"
+MGL_MAP = MGL_MAP + (("ATARI7800", core, (({".a78", ".a26", ".bin"}, 1, "f", 1),)),)
 
-if LLAPI_ALL or LLAPI_GBA2P:
-    MGL_MAP = MGL_MAP + (("GBA2P", "_LLAPI/GBA2P_LLAPI", (({".gba"}, 1, "f", 0),)),)
+if ENABLE_LLAPI and LLAPI_GBA2P:
+    core = "_LLAPI/GBA2P_LLAPI"
 else:
-    MGL_MAP = MGL_MAP + (("GBA2P", "_Console/GBA2P", (({".gba"}, 1, "f", 0),)),)
+    core = "_Console/GBA2P"
+MGL_MAP = MGL_MAP + (("GBA2P", core, (({".gba"}, 1, "f", 0),)),)
 
-if LLAPI_ALL or LLAPI_GBA:
-    MGL_MAP = MGL_MAP + (("GBA", "_LLAPI/GBA_LLAPI", (({".gba"}, 1, "f", 0),)),)
+if ENABLE_LLAPI and LLAPI_GBA:
+    core = "_LLAPI/GBA_LLAPI"
 else:
-    MGL_MAP = MGL_MAP + (("GBA", "_Console/GBA", (({".gba"}, 1, "f", 0),)),)
+    core = "_Console/GBA"
+MGL_MAP = MGL_MAP + (("GBA", core, (({".gba"}, 1, "f", 0),)),)
 
-if LLAPI_ALL or LLAPI_GAMEBOY:    
-    MGL_MAP = MGL_MAP + (("GAMEBOY", "_LLAPI/Gameboy_LLAPI", (({".gb", ".gbc"}, 1, "f", 1),)),)
+if ENABLE_LLAPI and LLAPI_GAMEBOY:
+    core = "_LLAPI/Gameboy_LLAPI"
 else:
-    MGL_MAP = MGL_MAP + (("GAMEBOY", "_Console/Gameboy", (({".gb", ".gbc"}, 1, "f", 1),)),)
+    core = "_Console/Gameboy"
+MGL_MAP = MGL_MAP + (("GAMEBOY", core, (({".gb", ".gbc"}, 1, "f", 1),)),)
 
-if LLAPI_ALL or LLAPI_GENESIS:    
-    MGL_MAP = MGL_MAP + (("Genesis", "_LLAPI/Genesis_LLAPI", (({".bin", ".gen", ".md"}, 1, "f", 0),)),)
+if ENABLE_LLAPI and LLAPI_GENESIS:
+    core = "_LLAPI/Genesis_LLAPI"
 else:
-    MGL_MAP = MGL_MAP + (("Genesis", "_Console/Genesis", (({".bin", ".gen", ".md"}, 1, "f", 0),)),)
+    core = "_Console/Genesis"
+MGL_MAP = MGL_MAP + (("Genesis", core, (({".bin", ".gen", ".md"}, 1, "f", 0),)),)
 
-if LLAPI_ALL or LLAPI_MEGACD:    
-    MGL_MAP = MGL_MAP + (("MegaCD", "_LLAPI/MegaCD_LLAPI", (({".cue", ".chd"}, 1, "s", 0),)),)
+if ENABLE_LLAPI and LLAPI_MEGACD:
+    core = "_LLAPI/MegaCD_LLAPI"
 else:
-    MGL_MAP = MGL_MAP + (("MegaCD", "_Console/MegaCD", (({".cue", ".chd"}, 1, "s", 0),)),)
+    core = "_Console/MegaCD"
+MGL_MAP = MGL_MAP + (("MegaCD", core, (({".cue", ".chd"}, 1, "s", 0),)),)
 
-if LLAPI_ALL or LLAPI_NEOGEO:
-    MGL_MAP = MGL_MAP + ((
-        "NeoGeo",
-        "_LLAPI/NeoGeo_LLAPI",
-        (({".neo"}, 1, "f", 1), ({".iso", ".bin"}, 1, "s", 1)),
-    ),)
+if ENABLE_LLAPI and LLAPI_NEOGEO:
+    core = "_LLAPI/NeoGeo_LLAPI"
 else:
-    MGL_MAP = MGL_MAP + ((
-       "NeoGeo",
-       "_Console/NeoGeo",
-       (({".neo"}, 1, "f", 1), ({".iso", ".bin"}, 1, "s", 1)),
-    ),)
+    core = "_Console/NeoGeo"
+MGL_MAP = MGL_MAP + (("NeoGeo", core, (({".neo"}, 1, "f", 1), ({".iso", ".bin"}, 1, "s", 1)),),)
 
-if LLAPI_ALL or LLAPI_NES:
-    MGL_MAP = MGL_MAP + (("NES", "_LLAPI/NES_LLAPI", (({".nes", ".fds", ".nsf"}, 1, "f", 0),)),)
+if ENABLE_LLAPI and LLAPI_NES:
+    core = "_LLAPI/NES_LLAPI"
 else:
-    MGL_MAP = MGL_MAP + (("NES", "_Console/NES", (({".nes", ".fds", ".nsf"}, 1, "f", 0),)),)
+    core = "_Console/NES"
+MGL_MAP = MGL_MAP + (("NES", core, (({".nes", ".fds", ".nsf"}, 1, "f", 0),)),)
 
-if LLAPI_ALL or LLAPI_S32X:
-    MGL_MAP = MGL_MAP + (("S32X", "_LLAPI/S32X_LLAPI", (({".32x"}, 1, "f", 0),)),)
+if ENABLE_LLAPI and LLAPI_S32X:
+    core = "_LLAPI/S32X_LLAPI"
 else:
-    MGL_MAP = MGL_MAP + (("S32X", "_Console/S32X", (({".32x"}, 1, "f", 0),)),)
+    core = "_Console/S32X"
+MGL_MAP = MGL_MAP + (("S32X", core, (({".32x"}, 1, "f", 0),)),)
 
-if LLAPI_ALL or LLAPI_SGB:
-    MGL_MAP = MGL_MAP + (("SGB", "_LLAPI/SGB_LLAPI", (({".gb", ".gbc"}, 1, "f", 1),)),)
+if ENABLE_LLAPI and LLAPI_SGB:
+    core = "_LLAPI/SGB_LLAPI"
 else:
-    MGL_MAP = MGL_MAP + (("SGB", "_Console/SGB", (({".gb", ".gbc"}, 1, "f", 1),)),)
+    core = "_Console/SGB"
+MGL_MAP = MGL_MAP + (("SGB", core, (({".gb", ".gbc"}, 1, "f", 1),)),)
 
-if LLAPI_ALL or LLAPI_SMS:
-    MGL_MAP = MGL_MAP + (("SMS", "_LLAPI/SMS_LLAPI", (({".sms", ".sg"}, 1, "f", 1), ({".gg"}, 1, "f", 2))),)
+if ENABLE_LLAPI and LLAPI_SMS:
+    core = "_LLAPI/SMS_LLAPI"
 else:
-    MGL_MAP = MGL_MAP + (("SMS", "_Console/SMS", (({".sms", ".sg"}, 1, "f", 1), ({".gg"}, 1, "f", 2))),)
+    core = "_Console/SMS"
+MGL_MAP = MGL_MAP + (("SMS", core, (({".sms", ".sg"}, 1, "f", 1), ({".gg"}, 1, "f", 2))),)
 
-if LLAPI_ALL or LLAPI_SNES:
-    MGL_MAP = MGL_MAP + (("SNES", "_LLAPI/SNES_LLAPI", (({".sfc", ".smc"}, 2, "f", 0),)),)
+if ENABLE_LLAPI and LLAPI_SNES:
+    core = "_LLAPI/SNES_LLAPI"
 else:
-    MGL_MAP = MGL_MAP + (("SNES", "_Console/SNES", (({".sfc", ".smc"}, 2, "f", 0),)),)
+    core = "_Console/SNES"
+MGL_MAP = MGL_MAP + (("SNES", core, (({".sfc", ".smc"}, 2, "f", 0),)),)
 
-if LLAPI_ALL or LLAPI_TGFX16_CD:
-    MGL_MAP = MGL_MAP + ((
-        "TGFX16-CD",
-        "_LLAPI/TurboGrafx16_LLAPI",
-        (({".cue", ".chd"}, 1, "s", 0),),
-    ),)
+if ENABLE_LLAPI and LLAPI_TGFX16_CD:
+    core = "_LLAPI/TurboGrafx16_LLAPI"
 else:
-    MGL_MAP = MGL_MAP + ((
-       "TGFX16-CD",
-       "_Console/TurboGrafx16",
-       (({".cue", ".chd"}, 1, "s", 0),),
-    ),)
+    core = "_Console/TurboGrafx16"
+MGL_MAP = MGL_MAP + (("TGFX16-CD", core, (({".cue", ".chd"}, 1, "s", 0),),),)
 
-if LLAPI_ALL or LLAPI_TGFX16:
-    MGL_MAP = MGL_MAP + ((
-        "TGFX16",
-        "_LLAPI/TurboGrafx16_LLAPI",
-        (
-            ({".pce", ".bin"}, 1, "f", 0),
-            ({".sgx"}, 1, "f", 1),
-        ),
-    ),)
+if ENABLE_LLAPI and LLAPI_TGFX16:
+    core = "_LLAPI/TurboGrafx16_LLAPI"
 else:
-    MGL_MAP = MGL_MAP + ((
-       "TGFX16",
-       "_Console/TurboGrafx16",
-       (
-           ({".pce", ".bin"}, 1, "f", 0),
-           ({".sgx"}, 1, "f", 1),
-       ),
-    ),)
+    core = "_Console/TurboGrafx16"
+MGL_MAP = MGL_MAP + (("TGFX16", core, (({".pce", ".bin"}, 1, "f", 0), ({".sgx"}, 1, "f", 1),),),)
 
 GAMES_FOLDERS = (
     "/media/fat",
