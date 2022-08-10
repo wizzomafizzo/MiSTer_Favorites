@@ -61,20 +61,20 @@ if ENABLE_LLAPI:
         # LLAPI_FOUND = True
         ALLOWED_SD_FILES.add("_llapi")
         llapi_dir = os.path.join(SD_ROOT, "_llapi")
-        LLAPI_ATARI7800 = len(glob.glob("Atari7800*.rbf", root_dir=llapi_dir)) > 0
-        LLAPI_GAMEBOY = len(glob.glob("GBA2P*.rbf", root_dir=llapi_dir)) > 0
-        LLAPI_GBA2P = len(glob.glob("GBA*.rbf", root_dir=llapi_dir)) > 0
-        LLAPI_GBA = len(glob.glob("Gameboy*.rbf", root_dir=llapi_dir)) > 0
-        LLAPI_GENESIS = len(glob.glob("Genesis*.rbf", root_dir=llapi_dir)) > 0
-        LLAPI_MEGACD = len(glob.glob("MegaCD*.rbf", root_dir=llapi_dir)) > 0
-        LLAPI_NEOGEO = len(glob.glob("NeoGeo*.rbf", root_dir=llapi_dir)) > 0
-        LLAPI_NES = len(glob.glob("NES*.rbf", root_dir=llapi_dir)) > 0
-        LLAPI_S32X = len(glob.glob("S32X*.rbf", root_dir=llapi_dir)) > 0
-        LLAPI_SGB = len(glob.glob("SGB*.rbf", root_dir=llapi_dir)) > 0
-        LLAPI_SMS = len(glob.glob("SMS*.rbf", root_dir=llapi_dir)) > 0
-        LLAPI_SNES = len(glob.glob("SNES*.rbf", root_dir=llapi_dir)) > 0
-        LLAPI_TGFX16_CD = len(glob.glob("TurboGrafx16*.rbf", root_dir=llapi_dir)) > 0
-        LLAPI_TGFX16 = len(glob.glob("TurboGrafx16*.rbf", root_dir=llapi_dir))> 0
+        LLAPI_ATARI7800 = len(glob.glob(os.path.join(llapi_dir, "Atari7800*.rbf"))) > 0
+        LLAPI_GAMEBOY = len(glob.glob(os.path.join(llapi_dir, "GBA2P*.rbf"))) > 0
+        LLAPI_GBA2P = len(glob.glob(os.path.join(llapi_dir, "GBA*.rbf"))) > 0
+        LLAPI_GBA = len(glob.glob(os.path.join(llapi_dir, "Gameboy*.rbf"))) > 0
+        LLAPI_GENESIS = len(glob.glob(os.path.join(llapi_dir, "Genesis*.rbf"))) > 0
+        LLAPI_MEGACD = len(glob.glob(os.path.join(llapi_dir, "MegaCD*.rbf"))) > 0
+        LLAPI_NEOGEO = len(glob.glob(os.path.join(llapi_dir, "NeoGeo*.rbf"))) > 0
+        LLAPI_NES = len(glob.glob(os.path.join(llapi_dir, "NES*.rbf"))) > 0
+        LLAPI_S32X = len(glob.glob(os.path.join(llapi_dir, "S32X*.rbf"))) > 0
+        LLAPI_SGB = len(glob.glob(os.path.join(llapi_dir, "SGB*.rbf"))) > 0
+        LLAPI_SMS = len(glob.glob(os.path.join(llapi_dir, "SMS*.rbf"))) > 0
+        LLAPI_SNES = len(glob.glob(os.path.join(llapi_dir, "SNES*.rbf"))) > 0
+        LLAPI_TGFX16_CD = len(glob.glob(os.path.join(llapi_dir, "TurboGrafx16*.rbf"))) > 0
+        LLAPI_TGFX16 = len(glob.glob(os.path.join(llapi_dir, "TurboGrafx16*.rbf"))) > 0
 
 CORE_FILES = {".rbf", ".mra", ".mgl"}
 
