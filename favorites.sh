@@ -37,7 +37,7 @@ ALLOWED_SD_FILES = {
 }
 
 # set to True to use LLAPI cores if found; set to False to ignore LLAPI cores
-ENABLE_LLAPI = True
+ENABLE_LLAPI = False
 
 # assume each LLAPI core isn't there before we check for
 LLAPI_ATARI7800 = False
