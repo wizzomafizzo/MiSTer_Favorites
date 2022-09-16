@@ -4,7 +4,7 @@ Add and manage favorites in your [MiSTer](https://github.com/MiSTer-devel/Main_M
 
 ![GUI](https://github.com/wizzomafizzo/MiSTer_Favorites/raw/main/images/gui.png)
 
-This script works well with the [Games Menu](https://github.com/wizzomafizzo/MiSTer_GamesMenu) and [BGM](https://github.com/wizzomafizzo/MiSTer_BGM) scripts.
+Check out [MiSTer Extensions](https://github.com/wizzomafizzo/mrext) for other useful scripts!
 
 ## Features
 
