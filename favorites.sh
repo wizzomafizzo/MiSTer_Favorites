@@ -1104,7 +1104,7 @@ def add_favorite_workflow():
             mgl_def[1],
             mgl_def[2],
             mgl_def[3],
-            ("../../../.." + item),
+            ("../../../../.." + item),
         )
         add_favorite_mgl(item, path, mgl_data)
 
