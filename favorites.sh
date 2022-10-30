@@ -10,6 +10,8 @@ import configparser
 
 # TODO: smarter cores link creation
 # TODO: cleanup cores links
+# TODO: setname support
+# TODO: mention how to get it working on crt
 
 FAVORITES_DEFAULT = "_@Favorites"
 FAVORITES_NAMES = {"fav"}
