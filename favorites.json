@@ -6,14 +6,14 @@
     "default_options": {},
     "files": {
         "Scripts/favorites.sh": {
-            "hash": "0c77c9febd9080191920df010baf613e",
-            "size": 33045,
+            "hash": "7a124c1ae4531ea1ed01356140f17a36",
+            "size": 35309,
             "url": "https://raw.githubusercontent.com/wizzomafizzo/MiSTer_Favorites/main/favorites.sh"
         }
     },
     "folders": {
         "Scripts": {}
     },
-    "timestamp": 1667093812,
+    "timestamp": 1692361131,
     "zips": {}
 }
