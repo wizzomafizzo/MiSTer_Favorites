@@ -8,16 +8,11 @@ import re
 import zipfile
 import configparser
 
-# TODO: smarter cores link creation
-# TODO: cleanup cores links
-# TODO: setname support
-# TODO: mention how to get it working on crt
-
 FAVORITES_DEFAULT = "_@Favorites"
 FAVORITES_NAMES = {"fav"}
-CREATE_DEFAULT_FAVORITES = False
-SETUP_ARCADE = False
-COREPREFIX="_All/"
+CREATE_DEFAULT_FAVORITES = True
+SETUP_ARCADE = True
+CORE_PREFIX=""
 
 SD_ROOT = "/media/fat"
 STARTUP_SCRIPT = "/media/fat/linux/user-startup.sh"
@@ -1176,7 +1171,7 @@ def add_favorite_workflow():
         # system rom, make mgl file
         rbf, mgl_def = mgl_from_file(file_type, name)
 
-        rbf=COREPREFIX+rbf
+        rbf=CORE_PREFIX+rbf
 
         if rbf is None or mgl_def is None:
             # this shouldn't really happen due to the contraints on the file picker
