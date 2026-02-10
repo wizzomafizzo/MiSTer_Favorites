@@ -211,6 +211,8 @@ GAMES_FOLDERS = (
 WINDOW_TITLE = "Favorites Manager"
 WINDOW_DIMENSIONS = ["20", "75", "20"]
 
+os.environ["NCURSES_NO_UTF8_ACS"]="1"
+
 SELECTION_HISTORY = {
     "__MAIN__": "1",
 }
