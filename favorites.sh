@@ -155,7 +155,7 @@ MGL_MAP = (
         (({".rom", ".int", ".bin"}, 1, "f", 1),),
     ),
     ("MegaCD", "_Console/MegaCD", (({".cue", ".chd"}, 1, "s", 0),)),
-    ("N64", "_Console/N64", (({".n64", ".z64"}, 1, "f", 1),)),
+    ("N64", "_Console/N64", (({".n64", ".z64", ".v64"}, 1, "f", 1),)),
     ("NeoGeo-CD", "_Console/NeoGeo", (({".cue", ".chd"}, 1, "s", 1),),),
     ("NeoGeo", "_Console/NeoGeo", (({".neo"}, 1, "f", 1),),),
     ("NES", "_Console/NES", (({".nes", ".fds", ".nsf"}, 2, "f", 1),)),
