@@ -27,6 +27,7 @@ ALLOWED_SD_FILES = {
     "_arcade",
     "_console",
     "_computer",
+    "_dos games",
     "_games",
     "_other",
     "_utility",
