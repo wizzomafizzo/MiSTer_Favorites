@@ -7,6 +7,7 @@ import glob
 import re
 import zipfile
 import configparser
+import xml.etree.ElementTree as ET
 
 FAVORITES_DEFAULT = "_@Favorites"
 FAVORITES_NAMES = {"fav"}
@@ -156,7 +157,7 @@ MGL_MAP = (
     ("MegaCD", "_Console/MegaCD", (({".cue", ".chd"}, 1, "s", 0),)),
     ("N64", "_Console/N64", (({".n64", ".z64"}, 1, "f", 1),)),
     ("NeoGeo-CD", "_Console/NeoGeo", (({".cue", ".chd"}, 1, "s", 1),),),
-    ("NeoGeo", "_Console/NeoGeo", (({".neo"}, 1, "f", 1),),),
+    ("NeoGeo", "_Console/NeoGeo", (({".neo", ".zip"}, 1, "f", 1),),),
     ("NES", "_Console/NES", (({".nes", ".fds", ".nsf"}, 2, "f", 1),)),
     ("ODYSSEY2", "_Console/Odyssey2", (({".bin"}, 1, "f", 1),)),
     ("PSX", "_Console/PSX", (({".cue", ".chd"}, 1, "s", 1),)),
@@ -220,6 +221,7 @@ SELECTION_HISTORY = {
 BAD_CHARS = '<>:"/\\|?*'
 
 ZIP_CACHE = {}
+ROMSET_CACHE = {}
 
 INI_FILENAME = "favorites.ini"
 INI_PATH = os.path.join(os.path.dirname(os.path.realpath(sys.argv[0])), INI_FILENAME)
@@ -366,6 +368,122 @@ def make_mgl(rbf, delay, _type, index, path, setname):
         return mgl.format(rbf, delay, _type, index, path)
 
 
+# return the NeoGeo games folder that contains a path
+def get_neogeo_base(path: str):
+    real_path = os.path.realpath(path)
+
+    for parent in GAMES_FOLDERS:
+        for folder in ("NeoGeo", "NEOGEO"):
+            for base in (
+                    os.path.join(parent, folder),
+                    os.path.join(parent, "games", folder),
+            ):
+                real_base = os.path.realpath(base)
+                try:
+                    if os.path.commonpath([real_path, real_base]) == real_base:
+                        return base
+                except ValueError:
+                    continue
+
+    return None
+
+
+# load zip filename to title mappings from a NeoGeo romsets.xml file
+def load_neogeo_romset_names(xml_path: str):
+    xml_path = os.path.realpath(xml_path)
+    cache = ROMSET_CACHE.get(xml_path)
+    if cache is not None:
+        return cache
+
+    names = {}
+    try:
+        root = ET.parse(xml_path).getroot()
+    except (ET.ParseError, OSError):
+        ROMSET_CACHE[xml_path] = names
+        return names
+
+    romsets = [root] if root.tag == "romset" else root.findall(".//romset")
+    for romset in romsets:
+        raw_names = romset.get("name", "")
+        title = romset.get("altname", "").strip()
+        if raw_names == "" or title == "":
+            continue
+
+        for name in raw_names.split(","):
+            name = name.strip().lower()
+            if name != "":
+                names[name] = title
+
+    ROMSET_CACHE[xml_path] = names
+    return names
+
+
+# find the active NeoGeo romsets.xml mapping for a folder
+def get_neogeo_romset_names(folder: str):
+    base = get_neogeo_base(folder)
+    if base is None:
+        return {}
+
+    if os.path.isdir(folder):
+        current = os.path.realpath(folder)
+    else:
+        current = os.path.realpath(os.path.dirname(folder))
+    base = os.path.realpath(base)
+
+    while True:
+        xml_path = os.path.join(current, "romsets.xml")
+        if os.path.isfile(xml_path):
+            return load_neogeo_romset_names(xml_path)
+
+        if current == base:
+            break
+
+        parent = os.path.dirname(current)
+        if parent == current:
+            break
+        current = parent
+
+    return {}
+
+
+# return the human-readable title for a NeoGeo zip when romsets.xml provides one
+def get_neogeo_zip_title(path: str):
+    name, ext = os.path.splitext(os.path.basename(path))
+    if ext.lower() != ".zip":
+        return None
+
+    return get_neogeo_romset_names(os.path.dirname(path)).get(name.lower())
+
+
+# return the default favorite name shown to the user for a selected item
+def get_default_favorite_name(file_type: str, item: str):
+    orig_name, ext = os.path.splitext(os.path.basename(item))
+    if file_type == "NeoGeo" and ext.lower() == ".zip":
+        title = get_neogeo_zip_title(item)
+        if title:
+            safe_title = re.sub("[{}]+".format(re.escape(BAD_CHARS)), " ", title)
+            safe_title = re.sub(r"\s+", " ", safe_title).strip().strip(".")
+            if safe_title != "":
+                return safe_title
+
+    return orig_name
+
+
+# normalize MGL paths for systems that need special launcher handling
+def get_mgl_path(file_type: str, path: str):
+    if file_type != "NeoGeo":
+        return path
+
+    # NeoGeo favorites work best when the launcher path is relative to the
+    # system's game folder instead of an absolute /media/... path.
+    base = get_neogeo_base(path)
+    if base is not None:
+        rel_path = os.path.relpath(path, base)
+        return rel_path if rel_path != "." else os.path.basename(path)
+
+    return path
+
+
 def create_default_favorites():
     default_path = os.path.join(SD_ROOT, FAVORITES_DEFAULT)
     if len(get_favorite_folders()) == 0 and not os.path.exists(default_path):
@@ -499,7 +617,7 @@ def display_main_menu():
         return None
 
 
-def display_add_favorite_name(item, msg=None):
+def display_add_favorite_name(item, msg=None, default_name=None):
     # display a message box first if there's a problem
     if msg is not None:
         msg_args = [
@@ -524,7 +642,9 @@ def display_add_favorite_name(item, msg=None):
     ]
 
     orig_name, ext = os.path.splitext(os.path.basename(item))
-    args.append(orig_name)
+    if default_name is None:
+        default_name = orig_name
+    args.append(default_name)
 
     result = subprocess.run(args, env=dialog_env(), stderr=subprocess.PIPE)
 
@@ -963,15 +1083,26 @@ def zip_files(zip_path: str, zip_folder: str):
 # display menu to browse for and select launcher file
 def display_launcher_select(start_folder):
     def menu(folder: str):
+        def file_label(fn: str):
+            if file_type == "NeoGeo":
+                name, ext = os.path.splitext(fn)
+                if ext.lower() == ".zip":
+                    return neogeo_romset_names.get(name.lower(), fn)
+            return fn
+
         subfolders = []
         files = []
         file_type, mgl = match_games_folder(folder)
+        neogeo_romset_names = {}
 
         in_zip = zip_path(folder)
         if in_zip:
             dir = zip_files(*in_zip)
         else:
             dir = os.listdir(folder)
+
+        if file_type == "NeoGeo" and not in_zip:
+            neogeo_romset_names = get_neogeo_romset_names(folder)
 
         # pick out and sort folders and valid files
         for fn in dir:
@@ -1006,7 +1137,7 @@ def display_launcher_select(start_folder):
                 files.append(fn)
 
         subfolders.sort(key=str.lower)
-        files.sort(key=str.lower)
+        files.sort(key=lambda fn: file_label(fn).lower())
 
         if file_type == "__CORE__":
             msg = "Select core or game to favorite."
@@ -1054,7 +1185,7 @@ def display_launcher_select(start_folder):
             idx += 1
 
         for fn in files:
-            args.extend([str(idx), fn])
+            args.extend([str(idx), file_label(fn)])
             all_items.append(fn)
             idx += 1
 
@@ -1089,7 +1220,7 @@ def display_launcher_select(start_folder):
             current_folder = os.path.join(current_folder, selected[:-1])
         elif selected == "..":
             current_folder = os.path.dirname(current_folder)
-        elif selected.lower().endswith(".zip"):
+        elif selected.lower().endswith(".zip") and file_type != "NeoGeo":
             current_folder = os.path.join(current_folder, selected)
         else:
             return file_type, os.path.join(current_folder, selected)
@@ -1139,7 +1270,10 @@ def add_favorite_workflow():
         folder = ""
 
     # enter file/display name of the favorite
-    name = display_add_favorite_name(item)
+    name = display_add_favorite_name(
+        item,
+        default_name=get_default_favorite_name(file_type, item),
+    )
     valid_path = False
     while not valid_path:
         if name is None:
@@ -1149,7 +1283,9 @@ def add_favorite_workflow():
         if os.path.exists(path):
             valid_path = False
             name = display_add_favorite_name(
-                item, "A favorite already exists with this name."
+                item,
+                "A favorite already exists with this name.",
+                os.path.splitext(name)[0],
             )
             continue
         if has_bad_chars(name):
@@ -1157,11 +1293,12 @@ def add_favorite_workflow():
             name = display_add_favorite_name(
                 item,
                 "Name cannot contain any of these characters: {}".format(BAD_CHARS),
+                os.path.splitext(name)[0],
             )
             continue
         if os.path.splitext(path)[1] == "":
             valid_path = False
-            name = display_add_favorite_name(item)
+            name = display_add_favorite_name(item, default_name=os.path.splitext(name)[0])
             continue
         else:
             valid_path = True
@@ -1190,7 +1327,7 @@ def add_favorite_workflow():
             mgl_def[1],
             mgl_def[2],
             mgl_def[3],
-            item,
+            get_mgl_path(file_type, item),
             setname,
         )
         add_favorite_mgl(item, path, mgl_data)
