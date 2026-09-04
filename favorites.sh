@@ -1224,6 +1224,13 @@ def display_launcher_select(start_folder):
             else:
                 return file_type, all_items[selection - 1]
         elif button == 3:
+            if selection == "":
+                return None, None
+            if show_external and selection == 1:
+                return file_type + "_Browse", EXTERNAL_FOLDER + "/"
+            elif show_external:
+                return file_type + "_Browse", all_items[selection - 2]
+            else:
                 return file_type + "_Browse", all_items[selection - 1]
         else:
             return None, None
